@@ -1,0 +1,31 @@
+# Docker Compose for SalesBrain Navigator
+
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./dataset:/app/dataset
+      - ./backend/app/ml/artifacts:/app/backend/app/ml/artifacts
+    environment:
+      - DATASET_PATH=/app/dataset/Cleaned_SuperStore.csv
+      - ML_ARTIFACTS_DIR=/app/backend/app/ml/artifacts
+      - CORS_ORIGINS=http://localhost:3000
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1
+    depends_on:
+      - backend
+    restart: unless-stopped
