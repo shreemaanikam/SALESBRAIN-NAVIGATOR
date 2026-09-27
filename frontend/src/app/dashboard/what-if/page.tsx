@@ -153,13 +153,13 @@ export default function WhatIfSimulatorPage() {
                 <div className="p-6">
                   <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-4">Projected Revenue</div>
                   <div className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-                    ${(simulatedSales / 1000000).toFixed(2)}M
+                    ${(simulatedSales / 1000000)?.toFixed(2)}M
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="text-slate-400 line-through">${(baselineSales / 1000000).toFixed(2)}M</span>
+                    <span className="text-slate-400 line-through">${(baselineSales / 1000000)?.toFixed(2)}M</span>
                     <ArrowRight className="w-4 h-4 text-slate-300" />
                     <span className={cn("font-bold", salesDelta >= 0 ? "text-green-600" : "text-red-600")}>
-                      {salesDelta > 0 ? '+' : ''}{(salesDelta / 1000000).toFixed(2)}M
+                      {salesDelta > 0 ? '+' : ''}{(salesDelta / 1000000)?.toFixed(2)}M
                     </span>
                   </div>
                 </div>
@@ -168,13 +168,13 @@ export default function WhatIfSimulatorPage() {
                 <div className="p-6">
                   <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-4">Projected Profit</div>
                   <div className={cn("text-3xl font-bold mb-2", simulatedProfit < 0 ? "text-red-600" : "text-slate-900 dark:text-white")}>
-                    ${(simulatedProfit / 1000).toFixed(0)}k
+                    ${(simulatedProfit / 1000)?.toFixed(0)}k
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="text-slate-400 line-through">${(baselineProfit / 1000).toFixed(0)}k</span>
+                    <span className="text-slate-400 line-through">${(baselineProfit / 1000)?.toFixed(0)}k</span>
                     <ArrowRight className="w-4 h-4 text-slate-300" />
                     <span className={cn("font-bold", profitDelta >= 0 ? "text-green-600" : "text-red-600")}>
-                      {profitDelta > 0 ? '+' : ''}{(profitDelta / 1000).toFixed(0)}k
+                      {profitDelta > 0 ? '+' : ''}{(profitDelta / 1000)?.toFixed(0)}k
                     </span>
                   </div>
                 </div>
@@ -183,13 +183,13 @@ export default function WhatIfSimulatorPage() {
                 <div className="p-6 bg-slate-50 dark:bg-slate-800/50">
                   <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-4">Projected Margin</div>
                   <div className={cn("text-3xl font-bold mb-2", simulatedMargin < 0 ? "text-red-600" : "text-slate-900 dark:text-white")}>
-                    {simulatedMargin.toFixed(2)}%
+                    {simulatedMargin?.toFixed(2)}%
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="text-slate-400 line-through">{baselineMargin.toFixed(2)}%</span>
+                    <span className="text-slate-400 line-through">{baselineMargin?.toFixed(2)}%</span>
                     <ArrowRight className="w-4 h-4 text-slate-300" />
                     <span className={cn("font-bold", simulatedMargin >= baselineMargin ? "text-green-600" : "text-red-600")}>
-                      {simulatedMargin >= baselineMargin ? '+' : ''}{(simulatedMargin - baselineMargin).toFixed(2)}%
+                      {simulatedMargin >= baselineMargin ? '+' : ''}{(simulatedMargin - baselineMargin)?.toFixed(2)}%
                     </span>
                   </div>
                 </div>

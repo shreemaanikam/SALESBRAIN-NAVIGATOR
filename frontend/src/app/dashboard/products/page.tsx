@@ -95,13 +95,13 @@ export default function ProductIntelligencePage() {
                     <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{product.category}</td>
                     <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{product.subCategory}</td>
                     <td className="px-6 py-4 text-right font-medium text-slate-900 dark:text-white">
-                      {product.sales != null ? `$${product.sales.toLocaleString()}` : 'N/A'}
+                      {product.sales != null ? `$${product.sales?.toLocaleString()}` : 'N/A'}
                     </td>
                     <td className={cn(
                       "px-6 py-4 text-right font-medium",
                       (product.profit ?? 0) < 0 ? "text-red-600" : "text-green-600"
                     )}>
-                      {product.profit != null ? `$${product.profit.toLocaleString()}` : 'N/A'}
+                      {product.profit != null ? `$${product.profit?.toLocaleString()}` : 'N/A'}
                     </td>
                     <td className="px-6 py-4 text-right text-slate-600 dark:text-slate-300">
                       {product.profitMargin != null ? `${product.profitMargin}%` : 'N/A'}

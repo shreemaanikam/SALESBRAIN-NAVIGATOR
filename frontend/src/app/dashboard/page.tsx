@@ -85,7 +85,7 @@ export default function DashboardOverview() {
             <CardContent className="p-6">
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{kpi.label}</span>
-                <span className="text-3xl font-bold text-slate-900 dark:text-white">{kpi.value}</span>
+                <span className="text-3xl font-bold text-slate-900 dark:text-white truncate" title={kpi.value}>{kpi.value}</span>
                 {kpi.trend_value && (
                   <div className="flex items-center gap-2 mt-1">
                     <span className={cn(
@@ -119,8 +119,8 @@ export default function DashboardOverview() {
                 <LineChart data={trends.data || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey={trends.isFromApi ? "period" : "name"} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
-                  <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dx={-10} tickFormatter={(val) => `$${(val/1000).toFixed(0)}k`} />
-                  <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dx={10} tickFormatter={(val) => `$${(val/1000).toFixed(0)}k`} />
+                  <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dx={-10} tickFormatter={(val) => `$${(val/1000)?.toFixed(0)}k`} />
+                  <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dx={10} tickFormatter={(val) => `$${(val/1000)?.toFixed(0)}k`} />
                   <RechartsTooltip 
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   />
@@ -148,7 +148,7 @@ export default function DashboardOverview() {
                   <RechartsTooltip 
                     cursor={{ fill: '#f1f5f9' }}
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    formatter={(value: any) => [`$${Number(value).toLocaleString()}`, 'Sales']}
+                    formatter={(value: any) => [`$${Number(value)?.toLocaleString()}`, 'Sales']}
                   />
                   <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={24} />
                 </BarChart>

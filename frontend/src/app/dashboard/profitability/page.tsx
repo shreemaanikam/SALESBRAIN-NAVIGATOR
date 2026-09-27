@@ -4,7 +4,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import {  } from '@/data/mock';
-import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip as RechartsTooltip, Cell } from 'recharts';
+import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip as RechartsTooltip, Cell, ReferenceLine } from 'recharts';
 import { getProfitabilitySummary } from '@/services/api';
 import { useApiData } from '@/hooks/useApiData';
 
@@ -42,22 +42,6 @@ export default function ProfitabilityPage() {
         </CardHeader>
         <CardContent>
           <div className="h-[500px] w-full relative border border-slate-100 rounded-xl bg-slate-50/30">
-            {/* Quadrant Backgrounds */}
-            <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 pointer-events-none opacity-50 rounded-xl overflow-hidden">
-              <div className="border-r border-b border-slate-200 bg-amber-50/50 flex items-center justify-center">
-                <span className="text-slate-400 font-medium text-sm">Low Sales / High Profit</span>
-              </div>
-              <div className="border-b border-slate-200 bg-green-50/50 flex items-center justify-center">
-                <span className="text-slate-400 font-medium text-sm">High Sales / High Profit</span>
-              </div>
-              <div className="border-r border-slate-200 bg-slate-50/50 flex items-center justify-center">
-                <span className="text-slate-400 font-medium text-sm">Low Sales / Low Profit</span>
-              </div>
-              <div className="bg-red-50/50 flex items-center justify-center">
-                <span className="text-slate-400 font-medium text-sm">High Sales / Low Profit</span>
-              </div>
-            </div>
-
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
@@ -80,12 +64,13 @@ export default function ProfitabilityPage() {
                   tick={{ fontSize: 12, fill: '#64748b' }}
                 />
                 <ZAxis type="number" dataKey="margin" range={[100, 1000]} name="Margin" />
+                <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="3 3" />
                 <RechartsTooltip 
                   cursor={{ strokeDasharray: '3 3' }}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   formatter={(value: any, name: any) => {
                     if (name === 'Margin') return [`${value}%`, name];
-                    return [`$${value.toLocaleString()}`, name];
+                    return [`$${value?.toLocaleString()}`, name];
                   }}
                   labelFormatter={() => ''}
                 />

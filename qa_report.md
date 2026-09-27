@@ -99,3 +99,10 @@ Visit `http://localhost:3000` to interact with the tested system.
 - **Priority 6 (Jargon)**: Replaced 'IQR' terminology in `risk/page.tsx` and `settings/page.tsx` with clear phrases like 'Unusual Sales and Profit Values' and 'statistical anomaly detection'. [FIXED]
 - **Priority 7 (Layout)**: Verified Tailwind responsive structures (`min-w-0`, `overflow-x-auto` for tables) exist across layout shells and complex dashboard grids. [PASS]
 - **Priority 11 (Validation)**: Reran `npx tsc --noEmit` and `npm run build` after UI modifications. Both checks completed successfully with 0 errors. [PASS]
+
+
+## 11. Final Deployment & Code Sync
+- **GitHub Sync**: `git init`, added `.gitignore` (ignoring `.env` and `artifacts`), staged files, committed as `feat: complete initial setup for SalesBrain Navigator`, and force pushed to overwrite the dummy remote README. Verified clean, safe repository state without secrets.
+- **Render Deployment Configuration**: Created `render.yaml` declaring `salesbrain-frontend` (Node/Next.js) and `salesbrain-backend` (Python/FastAPI) services. Backend build script is set to dynamically train the ML model (`train.py`) to bypass the GitHub 100MB file limit for `profit_model.joblib`. CORS and env variables set correctly via Render configuration.
+- **Customer Segment Overflow**: Refactored the 'Customer & Segment Intelligence' page's metric card layout. Moved from an inflexible flex layout to a robust CSS grid (`grid-cols-2 gap-4`), ensuring long numbers like Total Sales and individual metrics (Profit, Margin, Orders) fit neatly without overlapping borders on all viewports.
+- **Appearance Toggle**: Repaired Next.js dark mode. The `Settings` appearance controls correctly trigger system, light, and dark modes globally. Fixed root cause by inserting `darkMode: 'class'` inside `tailwind.config.ts`, syncing `next-themes` with Tailwind CSS v3.

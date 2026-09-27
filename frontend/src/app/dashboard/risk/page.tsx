@@ -41,19 +41,19 @@ export default function RiskCenterPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-md border border-slate-100 dark:border-slate-700">
             <div className="text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold">Lower Fence</div>
-            <div className="text-xl font-bold text-red-600">{outlierData?.lower_fence.toFixed(0)}</div>
+            <div className="text-xl font-bold text-red-600">{outlierData?.lower_fence?.toFixed(0)}</div>
           </div>
           <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-md border border-slate-100 dark:border-slate-700">
             <div className="text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold">Upper Fence</div>
-            <div className="text-xl font-bold text-blue-600">{outlierData?.upper_fence.toFixed(0)}</div>
+            <div className="text-xl font-bold text-blue-600">{outlierData?.upper_fence?.toFixed(0)}</div>
           </div>
           <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-md border border-slate-100 dark:border-slate-700">
             <div className="text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold">Total Outliers</div>
-            <div className="text-xl font-bold text-slate-900 dark:text-white">{outlierData?.total_outliers.toLocaleString()}</div>
+            <div className="text-xl font-bold text-slate-900 dark:text-white">{outlierData?.total_outliers?.toLocaleString()}</div>
           </div>
           <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-md border border-slate-100 dark:border-slate-700">
             <div className="text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold">Outlier Ratio</div>
-            <div className="text-xl font-bold text-amber-600">{outlierData?.outlier_pct.toFixed(2)}%</div>
+            <div className="text-xl font-bold text-amber-600">{outlierData?.outlier_pct?.toFixed(2)}%</div>
           </div>
         </div>
       </div>
@@ -81,9 +81,9 @@ export default function RiskCenterPage() {
                 <tr key={outlier.id || outlier.order_id || index} className="bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-6 py-4 font-medium text-slate-900 dark:text-white font-mono text-xs">{outlier.orderId || outlier.order_id}</td>
                   <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{outlier.type || 'Outlier'}</td>
-                  <td className="px-6 py-4 text-right font-medium text-slate-900 dark:text-white">${(outlier.sales || 0).toLocaleString()}</td>
-                  <td className="px-6 py-4 text-right font-medium text-red-600">${(outlier.profit || 0).toLocaleString()}</td>
-                  <td className="px-6 py-4 text-right text-slate-600 dark:text-slate-400">{((outlier.discount || 0) * 100).toFixed(0)}%</td>
+                  <td className="px-6 py-4 text-right font-medium text-slate-900 dark:text-white">${(outlier.sales || 0)?.toLocaleString()}</td>
+                  <td className="px-6 py-4 text-right font-medium text-red-600">${(outlier.profit || 0)?.toLocaleString()}</td>
+                  <td className="px-6 py-4 text-right text-slate-600 dark:text-slate-400">{((outlier.discount || 0) * 100)?.toFixed(0)}%</td>
                   <td className="px-6 py-4">
                     <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-semibold uppercase">
                       {outlier.severity || 'HIGH'}

@@ -37,12 +37,12 @@ export default function CustomerIntelligencePage() {
               <div className="space-y-4 mt-2">
                 <div>
                   <div className="text-sm text-slate-500 dark:text-slate-400">Total Sales</div>
-                  <div className="text-2xl font-bold text-slate-900 dark:text-white break-words">${segment.sales.toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-slate-900 dark:text-white break-words">${segment.sales?.toLocaleString()}</div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 border-t border-slate-100 dark:border-slate-800 pt-4">
                   <div className="min-w-0">
                     <div className="text-xs text-slate-500 dark:text-slate-400 truncate">Profit</div>
-                    <div className="text-sm font-medium text-green-600 truncate" title={`$${segment.profit.toLocaleString()}`}>${segment.profit.toLocaleString()}</div>
+                    <div className="text-sm font-medium text-green-600 truncate" title={`$${segment.profit?.toLocaleString()}`}>${segment.profit?.toLocaleString()}</div>
                   </div>
                   <div className="min-w-0">
                     <div className="text-xs text-slate-500 dark:text-slate-400 truncate">Margin</div>
@@ -50,7 +50,7 @@ export default function CustomerIntelligencePage() {
                   </div>
                   <div className="min-w-0">
                     <div className="text-xs text-slate-500 dark:text-slate-400 truncate">Orders</div>
-                    <div className="text-sm font-medium text-slate-900 dark:text-white truncate" title={segment.orders.toLocaleString()}>{segment.orders.toLocaleString()}</div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-white truncate" title={segment.orders?.toLocaleString()}>{segment.orders?.toLocaleString()}</div>
                   </div>
                   <div className="min-w-0">
                     <div className="text-xs text-slate-500 dark:text-slate-400 truncate">Avg Order</div>
@@ -79,7 +79,7 @@ export default function CustomerIntelligencePage() {
                 <Tooltip 
                   cursor={{ fill: 'transparent' }}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', backgroundColor: 'var(--card)' }}
-                  formatter={(value: any, name: any) => [`$${value.toLocaleString()}`, name]}
+                  formatter={(value: any, name: any) => [`$${value?.toLocaleString()}`, name]}
                 />
                 <Legend verticalAlign="top" height={36} iconType="circle" />
                 <Bar yAxisId="left" dataKey="sales" name="Sales" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />

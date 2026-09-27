@@ -66,7 +66,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
           <CardContent className="p-6">
             <div className="text-sm font-medium text-slate-500 mb-1">Total Revenue</div>
             <div className="text-3xl font-bold text-slate-900 dark:text-white">
-              {product.sales != null ? `$${product.sales.toLocaleString()}` : 'N/A'}
+              {product.sales != null ? `$${product.sales?.toLocaleString()}` : 'N/A'}
             </div>
           </CardContent>
         </Card>
@@ -74,7 +74,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
           <CardContent className="p-6">
             <div className="text-sm font-medium text-slate-500 mb-1">Net Profit</div>
             <div className={cn("text-3xl font-bold", (product.profit ?? 0) < 0 ? "text-red-600" : "text-green-600")}>
-              {product.profit != null ? `$${product.profit.toLocaleString()}` : 'N/A'}
+              {product.profit != null ? `$${product.profit?.toLocaleString()}` : 'N/A'}
             </div>
           </CardContent>
         </Card>
@@ -90,7 +90,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
           <CardContent className="p-6">
             <div className="text-sm font-medium text-slate-500 mb-1">Average Discount</div>
             <div className="text-3xl font-bold text-slate-900 dark:text-white">
-              {product.averageDiscount != null ? `${(product.averageDiscount * 100).toFixed(0)}%` : 'N/A'}
+              {product.averageDiscount != null ? `${(product.averageDiscount * 100)?.toFixed(0)}%` : 'N/A'}
             </div>
           </CardContent>
         </Card>
@@ -123,7 +123,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
               {product.profit < 0 ? (
                 <>
                   <p className="text-sm text-slate-700">
-                    This product is generating high sales volume but resulting in net losses due to a combination of high discounts ({product.averageDiscount != null ? (product.averageDiscount * 100).toFixed(0) : 'N/A'}%) and shipping costs.
+                    This product is generating high sales volume but resulting in net losses due to a combination of high discounts ({product.averageDiscount != null ? (product.averageDiscount * 100)?.toFixed(0) : 'N/A'}%) and shipping costs.
                   </p>
                   <div className="bg-blue-50 border border-blue-100 rounded-md p-3">
                     <span className="text-xs font-bold uppercase text-blue-700 block mb-1">Recommendation Preview</span>

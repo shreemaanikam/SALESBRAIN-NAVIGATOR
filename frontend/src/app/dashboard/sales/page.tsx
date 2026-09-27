@@ -15,7 +15,14 @@ import { useFilterStore } from '@/store/store';
 export default function SalesIntelligencePage() {
   const { searchQuery } = useFilterStore();
   
-  const { data: filteredSalesTrend } = useApiData(() => getMonthlySales({ q: searchQuery }), [], [searchQuery]);
+  const { data: rawSalesTrend } = useApiData(() => getMonthlySales({ q: searchQuery }), [], [searchQuery]);
+  const filteredSalesTrend = React.useMemo(() => {
+    return (rawSalesTrend || []).map((item: any) => ({
+      ...item,
+      name: `${item.month_name?.substring(0,3) || ''} ${item.year || ''}`.trim() || item.name
+    }));
+  }, [rawSalesTrend]);
+  
   const { data: filteredCategorySales } = useApiData(() => getSalesByCategory({ q: searchQuery }), [], [searchQuery]);
   // Fetch region and market even if they aren't explicitly rendered in this snippet just to satisfy requirements
   useApiData(() => getSalesByRegion({ q: searchQuery }), [], [searchQuery]);
@@ -52,7 +59,7 @@ export default function SalesIntelligencePage() {
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dx={-10} tickFormatter={(val) => `$${val/1000}k`} />
                 <Tooltip 
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', backgroundColor: 'var(--card)' }}
-                  formatter={(value: any) => [`$${value.toLocaleString()}`, 'Sales']}
+                  formatter={(value: any) => [`$${value?.toLocaleString()}`, 'Sales']}
                 />
                 <Area type="monotone" dataKey="sales" stroke="#2563eb" fillOpacity={1} fill="url(#colorSales)" strokeWidth={2} />
               </AreaChart>
@@ -76,7 +83,7 @@ export default function SalesIntelligencePage() {
                   <Tooltip 
                     cursor={{ fill: 'transparent' }}
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    formatter={(value: any) => [`$${value.toLocaleString()}`, 'Sales']}
+                    formatter={(value: any) => [`$${value?.toLocaleString()}`, 'Sales']}
                   />
                   <Bar dataKey="sales" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40}>
                     {(filteredCategorySales || []).map((entry: any, index: number) => (
@@ -113,7 +120,7 @@ export default function SalesIntelligencePage() {
                   </Pie>
                   <Tooltip 
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    formatter={(value: any) => [`$${value.toLocaleString()}`, 'Sales']}
+                    formatter={(value: any) => [`$${value?.toLocaleString()}`, 'Sales']}
                   />
                   <Legend verticalAlign="bottom" height={36} iconType="circle" />
                 </PieChart>
