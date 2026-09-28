@@ -122,3 +122,25 @@ Visit `http://localhost:3000` to interact with the tested system.
 - UI mapping screen confirms cleanly with validation errors isolated to step 3.
 - Build and linting checks passed successfully.
 
+
+## Iteration 6 - Debugging HTTP 500 Create Dashboard Error
+
+**Status:** ✅ Fixed
+**Root Cause:**
+1. **Unreloaded Backend State:** The original HTTP 500 error encountered after mapping columns was caused because the `uvicorn` backend was not restarted after applying the previous code fix. The running server was still executing the old unpatched Pandas aggregation logic (`cannot insert open, already exists`), which naturally resulted in an unhandled exception yielding an HTTP 500.
+2. **Generic HTTP 500 Catch-All:** The backend was wrapping all `compute_dashboard()` failures in a `try/except` block and responding with `status_code=500`, preventing the frontend from distinguishing between user-correctable bad mapping inputs and genuine backend crashes.
+3. **Type Mismatches:** The previous `validate_mapping` checked for column existence but failed to verify if a mapped column actually contained compatible data types (e.g., strings mapped to numeric `sales`). 
+
+**Files Changed:**
+1. `backend/app/services/workspace_service.py` -> Injected advanced data-type coercion checks to catch non-numeric and non-date data mappings during step 3.
+2. `backend/app/api/v1/routes/datasets.py` -> Changed `HTTPException(status_code=500)` to `422 Unprocessable Entity` for analytics computation failures.
+3. `backend/tests/test_advanced_datasets.py` -> Added regression tests ensuring empty data, missing fields, type mismatches, and dashboard totals behave predictably.
+
+**Fix Details:**
+- Hardened mapping validation explicitly rejects mapping string columns to numeric metrics if >50% of the data cannot be coerced.
+- If an analytics generation exception still bubbles up, the API now returns a structured 422 error, which the frontend's API client gracefully handles and injects directly into the UI's error state without losing the user's uploaded dataset state. The user can easily press "Back to Mapping".
+- A full server reload was performed, applying the collision-safe Pandas groupings (`agg(sales=(col, 'sum'))`). Test uploads proved a 200 response.
+
+**Database Assessment:**
+- **Was a database needed to fix this bug?** No. The HTTP 500 was fundamentally a Pandas logic crash combined with a generic HTTP response wrapper, compounded by stale code running in the background. The current in-memory python dictionary perfectly retains the uploaded `DataFrame` to support the NextJS UI state. 
+- **Production Architecture Note:** However, for the eventual Render deployment, this application *will* require a database (e.g., PostgreSQL for metadata) and Object Storage (e.g., AWS S3 for the CSV/Parquet files). In-memory dicts are instantly destroyed on Render auto-sleep or horizontal scaling.

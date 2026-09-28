@@ -233,7 +233,7 @@ def create_dashboard(dataset_id: str, body: Optional[CreateDashboardRequest] = N
         dashboard = compute_dashboard(df, mapping)
     except Exception as e:
         logger.error(f"Dashboard computation error for {dataset_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Analytics computation failed: {e}")
+        raise HTTPException(status_code=422, detail=f"Analytics computation failed: {e}")
 
     workspace_registry.update(
         dataset_id,

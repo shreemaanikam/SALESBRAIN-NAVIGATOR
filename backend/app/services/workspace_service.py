@@ -570,8 +570,14 @@ def validate_mapping(df: pd.DataFrame, mapping: Dict[str, str]) -> Dict:
     warnings = []
     info = []
 
-    # Check for missing columns and duplicates
+    # Check for missing columns, duplicates, and type compatibility
+    import pandas as pd
     seen_cols = {}
+    
+    # Define expected numeric concepts
+    numeric_concepts = {"sales", "profit", "discount", "quantity", "shipping_cost"}
+    date_concepts = {"order_date", "ship_date"}
+
     for concept, col_name in mapping.items():
         if not col_name:
             continue
@@ -582,6 +588,21 @@ def validate_mapping(df: pd.DataFrame, mapping: Dict[str, str]) -> Dict:
                 errors.append(f"Source column '{col_name}' is mapped multiple times (to '{seen_cols[col_name]}' and '{concept}').")
             else:
                 seen_cols[col_name] = concept
+            
+            # Type validation
+            if concept in numeric_concepts:
+                if not pd.api.types.is_numeric_dtype(df[col_name]):
+                    # Check if it can be coerced
+                    coerced = pd.to_numeric(df[col_name].astype(str).str.replace(r'[$,]', '', regex=True), errors='coerce')
+                    if coerced.isna().sum() > len(df) * 0.5:
+                        errors.append(f"Column '{col_name}' mapped to '{concept}' contains too many non-numeric values.")
+            
+            if concept in date_concepts:
+                if not pd.api.types.is_datetime64_any_dtype(df[col_name]):
+                    coerced = pd.to_datetime(df[col_name], errors='coerce')
+                    if coerced.isna().sum() > len(df) * 0.5:
+                        errors.append(f"Column '{col_name}' mapped to '{concept}' contains too many invalid dates.")
+
 
     has = lambda c: c in mapping and mapping.get(c, "") in df.columns
 
