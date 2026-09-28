@@ -26,9 +26,28 @@ class APIError extends Error {
   }
 }
 
+import { auth } from '@/lib/firebase';
+
+async function getAuthToken(): Promise<string | null> {
+  const authMode = process.env.NEXT_PUBLIC_AUTH_MODE || 'local';
+  if (authMode === 'local') {
+    return typeof window !== 'undefined' ? localStorage.getItem('salesbrain_token') : null;
+  } else {
+    // Firebase mode
+    if (!auth.currentUser) return null;
+    try {
+      // Force refresh if needed
+      return await auth.currentUser.getIdToken(false);
+    } catch (e) {
+      console.warn("Failed to get Firebase token:", e);
+      return null;
+    }
+  }
+}
+
 async function request<T>(path: string, options?: FetchOptions & RequestInit): Promise<T> {
   const controller = new AbortController();
-  const token = typeof window !== 'undefined' ? localStorage.getItem('salesbrain_token') : null;
+  const token = await getAuthToken();
   const headers = new Headers(options?.headers);
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);

@@ -16,13 +16,13 @@ services:
       - key: PORT
         value: 8000
       - key: AUTH_MODE
-        value: local
-        # Set to "firebase" in production to enforce JWT validation.
+        value: firebase
+      # - key: FIREBASE_SERVICE_ACCOUNT
+      #   value: "Add your Firebase Admin JSON credential in the Render Dashboard"
     disk:
       name: salesbrain-data
       mountPath: /opt/render/project/src/backend/app/data
       sizeGB: 1
-      # Note: Persistent disk is used to store Parquet user uploads safely.
       
   - type: web
     name: salesbrain-frontend
@@ -40,3 +40,7 @@ services:
           type: web
           name: salesbrain-backend
           envVarKey: RENDER_EXTERNAL_URL
+      - key: NEXT_PUBLIC_AUTH_MODE
+        value: firebase
+      # - key: NEXT_PUBLIC_FIREBASE_API_KEY
+      #   value: "Add your Firebase config values in the Render Dashboard"

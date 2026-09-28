@@ -49,3 +49,31 @@ def test_tenant_isolation():
         # Verify user B cannot access user A dataset directly
         res_get = client.get(f"/api/v1/datasets/{dataset_a}/insights")
         assert res_get.status_code == 404
+
+def test_legacy_workspace_isolation():
+    app.dependency_overrides.clear()
+    
+    # Create a legacy workspace directly in DB
+    from backend.app.db.database import SessionLocal
+    from backend.app.db.models import Workspace
+    import uuid
+    
+    db = SessionLocal()
+    legacy_id = str(uuid.uuid4())
+    ws = Workspace(id=legacy_id, filename="legacy.csv", filepath="dummy", user_id="legacy_user")
+    db.add(ws)
+    db.commit()
+    db.close()
+    
+    # Authenticate as a new firebase user
+    def override_new_user(): return "new_firebase_uid"
+    app.dependency_overrides[get_current_user] = override_new_user
+    
+    with TestClient(app) as client:
+        # Verify the new user cannot see legacy workspace
+        res_list = client.get("/api/v1/datasets")
+        assert not any(d["dataset_id"] == legacy_id for d in res_list.json()["datasets"])
+        
+        # Verify direct access fails
+        res_get = client.get(f"/api/v1/datasets/{legacy_id}/insights")
+        assert res_get.status_code == 404

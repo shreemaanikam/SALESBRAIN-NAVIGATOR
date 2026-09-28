@@ -37,7 +37,20 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         
     token = credentials.credentials
     try:
-        from firebase_admin import auth
+        import firebase_admin
+        from firebase_admin import auth, credentials as firebase_credentials
+        
+        if not firebase_admin._apps:
+            # Check if GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT is set
+            service_account_json = os.getenv("FIREBASE_SERVICE_ACCOUNT")
+            if service_account_json:
+                cred_dict = json.loads(service_account_json)
+                cred = firebase_credentials.Certificate(cred_dict)
+                firebase_admin.initialize_app(cred)
+            else:
+                # Fallback to default credentials (e.g. GOOGLE_APPLICATION_CREDENTIALS)
+                firebase_admin.initialize_app()
+                
         decoded_token = auth.verify_id_token(token)
         return decoded_token["uid"]
     except Exception as e:
