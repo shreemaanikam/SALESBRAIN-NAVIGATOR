@@ -14,7 +14,8 @@ import {
   FileText, 
   Database,
   Settings,
-  X
+  X,
+  UploadCloud
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -41,6 +42,7 @@ const navGroups = [
   {
     title: 'MANAGE',
     items: [
+      { name: 'My Data', href: '/dashboard/my-data', icon: UploadCloud },
       { name: 'Reports', href: '/dashboard/reports', icon: FileText },
       { name: 'Data Explorer', href: '/dashboard/data', icon: Database },
       { name: 'Settings', href: '/dashboard/settings', icon: Settings },

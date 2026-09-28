@@ -351,3 +351,106 @@ export async function getDataSchema() {
 export async function getDataQuality() {
   return request<any>('/data/quality');
 }
+
+// ---- My Data Workspace ----
+
+export async function uploadDataset(file: File): Promise<any> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 120000); // 2-min timeout for large files
+
+  try {
+    const res = await fetch(`${API_BASE}/datasets/upload`, {
+      method: 'POST',
+      body: formData,
+      signal: controller.signal,
+      // Do NOT set Content-Type — browser sets multipart boundary automatically
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.detail || `Upload failed (HTTP ${res.status})`);
+    }
+    return res.json();
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+}
+
+export async function listDatasets(): Promise<any> {
+  return request<any>('/datasets');
+}
+
+export async function getDatasetMeta(datasetId: string): Promise<any> {
+  return request<any>(`/datasets/${datasetId}`);
+}
+
+export async function getDatasetPreview(datasetId: string, rows = 50): Promise<any> {
+  return request<any>(`/datasets/${datasetId}/preview?rows=${rows}`);
+}
+
+export async function getDatasetSchema(datasetId: string): Promise<any> {
+  return request<any>(`/datasets/${datasetId}/schema`);
+}
+
+export async function getDatasetQuality(datasetId: string): Promise<any> {
+  return request<any>(`/datasets/${datasetId}/quality`);
+}
+
+export async function mapDatasetColumns(datasetId: string, mapping: Record<string, string>): Promise<any> {
+  return request<any>(`/datasets/${datasetId}/map-columns`, {
+    method: 'POST',
+    body: JSON.stringify({ mapping }),
+  });
+}
+
+export async function createWorkspaceDashboard(datasetId: string, mapping?: Record<string, string>): Promise<any> {
+  return request<any>(`/datasets/${datasetId}/create-dashboard`, {
+    method: 'POST',
+    body: JSON.stringify(mapping ? { mapping } : {}),
+    timeout: 60000,
+  });
+}
+
+export async function getWorkspaceDashboard(datasetId: string): Promise<any> {
+  return request<any>(`/datasets/${datasetId}/dashboard`);
+}
+
+export async function generateWorkspaceInsights(datasetId: string): Promise<any> {
+  return request<any>(`/datasets/${datasetId}/generate-insights`, {
+    method: 'POST',
+    body: '{}',
+    timeout: 30000,
+  });
+}
+
+export async function getWorkspaceInsights(datasetId: string): Promise<any> {
+  return request<any>(`/datasets/${datasetId}/insights`);
+}
+
+export async function generateWorkspaceRecommendations(datasetId: string): Promise<any> {
+  return request<any>(`/datasets/${datasetId}/generate-recommendations`, {
+    method: 'POST',
+    body: '{}',
+    timeout: 30000,
+  });
+}
+
+export async function getWorkspaceRecommendations(datasetId: string): Promise<any> {
+  return request<any>(`/datasets/${datasetId}/recommendations`);
+}
+
+export async function exportWorkspaceReport(datasetId: string, reportType: 'kpis' | 'insights' | 'recommendations' = 'kpis') {
+  const url = `${API_BASE}/datasets/${datasetId}/export?report_type=${reportType}`;
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `workspace_${reportType}.csv`;
+  a.click();
+}
+
+export async function deleteDataset(datasetId: string): Promise<any> {
+  return request<any>(`/datasets/${datasetId}`, { method: 'DELETE' });
+}
