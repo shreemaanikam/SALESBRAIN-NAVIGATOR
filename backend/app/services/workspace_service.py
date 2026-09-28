@@ -66,7 +66,7 @@ class DBWorkspaceRegistry:
         self.upload_dir = os.path.join("backend", "app", "data", "uploads")
         os.makedirs(self.upload_dir, exist_ok=True)
 
-    def create(self, dataset_id: str, filename: str, df: pd.DataFrame) -> Dict:
+    def create(self, dataset_id: str, filename: str, df: pd.DataFrame, user_id: str = "legacy_user") -> Dict:
         filepath = os.path.join(self.upload_dir, f"{dataset_id}.parquet")
         # Ensure column names are strings before saving to parquet
         df.columns = df.columns.astype(str)
@@ -81,6 +81,7 @@ class DBWorkspaceRegistry:
         try:
             ws_model = Workspace(
                 id=dataset_id,
+                user_id=user_id,
                 filename=filename,
                 filepath=filepath,
                 status="uploaded",
@@ -101,10 +102,13 @@ class DBWorkspaceRegistry:
             "column_count": len(df.columns)
         })
 
-    def get(self, dataset_id: str) -> Optional[Dict]:
+    def get(self, dataset_id: str, user_id: str = None) -> Optional[Dict]:
         db = SessionLocal()
         try:
-            ws_model = db.query(Workspace).filter(Workspace.id == dataset_id).first()
+            query = db.query(Workspace).filter(Workspace.id == dataset_id)
+            if user_id:
+                query = query.filter(Workspace.user_id == user_id)
+            ws_model = query.first()
             if not ws_model:
                 return None
             
@@ -138,10 +142,13 @@ class DBWorkspaceRegistry:
         finally:
             db.close()
 
-    def list(self) -> List[Dict]:
+    def list(self, user_id: str = None) -> List[Dict]:
         db = SessionLocal()
         try:
-            workspaces = db.query(Workspace).all()
+            query = db.query(Workspace)
+            if user_id:
+                query = query.filter(Workspace.user_id == user_id)
+            workspaces = query.all()
             results = []
             for ws_model in workspaces:
                 ws = {
@@ -159,10 +166,13 @@ class DBWorkspaceRegistry:
         finally:
             db.close()
 
-    def update(self, dataset_id: str, **kwargs):
+    def update(self, dataset_id: str, user_id: str = None, **kwargs):
         db = SessionLocal()
         try:
-            ws_model = db.query(Workspace).filter(Workspace.id == dataset_id).first()
+            query = db.query(Workspace).filter(Workspace.id == dataset_id)
+            if user_id:
+                query = query.filter(Workspace.user_id == user_id)
+            ws_model = query.first()
             if ws_model:
                 # If df is in kwargs, we need to save it to disk! (because compute_dashboard mutates it)
                 if "df" in kwargs:
@@ -191,10 +201,13 @@ class DBWorkspaceRegistry:
         finally:
             db.close()
 
-    def delete(self, dataset_id: str):
+    def delete(self, dataset_id: str, user_id: str = None):
         db = SessionLocal()
         try:
-            ws_model = db.query(Workspace).filter(Workspace.id == dataset_id).first()
+            query = db.query(Workspace).filter(Workspace.id == dataset_id)
+            if user_id:
+                query = query.filter(Workspace.user_id == user_id)
+            ws_model = query.first()
             if ws_model:
                 if os.path.exists(ws_model.filepath):
                     os.remove(ws_model.filepath)

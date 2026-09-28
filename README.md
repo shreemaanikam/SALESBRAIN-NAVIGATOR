@@ -71,3 +71,42 @@ A `Dockerfile` and `docker-compose.yml` are provided for containerized deploymen
 ```bash
 docker-compose up --build
 ```
+
+---
+
+## 🔒 Authentication & Database Configuration (Production Readiness)
+
+SalesBrain Navigator is equipped with robust Tenant Isolation, Authentication flows, and Database pooling suited for local development and scalable production.
+
+### Database Operations (SQLite vs PostgreSQL)
+The application seamlessly toggles between SQLite (Local) and PostgreSQL (Production) based on the `DATABASE_URL` environment variable.
+
+- **Local:** `DATABASE_URL=sqlite:///./backend/app/data/salesbrain.db`
+- **Production:** `DATABASE_URL=postgresql://user:password@hostname:5432/dbname` (Configure in Render Dashboard).
+
+**Running Migrations:**
+We use `Alembic` to manage database schema updates. Before running the backend for the first time, or after pulling new code, run:
+```bash
+cd backend
+alembic upgrade head
+```
+
+### Authentication Modes
+The application supports two modes controlled by `AUTH_MODE` in your `.env`.
+
+**1. Local Development (`AUTH_MODE=local`)**
+Bypasses strict JWT validation and assigns a mock user ID for frictionless UI testing. *Note: The backend will crash intentionally if this mode is accidentally pushed to a production environment.*
+
+**2. Production (`AUTH_MODE=firebase`)**
+Enforces strict JWT token validation. To enable:
+1. Set up a Firebase project and enable Email/Password Authentication.
+2. Obtain the Firebase Admin SDK private key JSON.
+3. Configure the frontend `AuthContext.tsx` to use the Firebase JS SDK `signInWithEmailAndPassword` method to retrieve the real JWT token.
+4. Set `AUTH_MODE=firebase` in your Render environment variables.
+
+### Troubleshooting
+- **401 Unauthorized:** Ensure the frontend is correctly storing the token in `localStorage` and `api.ts` is attaching it to the `Authorization: Bearer <token>` header.
+- **500 Internal Server Error (Auth):** If deployed to Render, ensure `AUTH_MODE` is explicitly set to `firebase`.
+- **Database Missing Column:** You forgot to run `alembic upgrade head`.
+
+---

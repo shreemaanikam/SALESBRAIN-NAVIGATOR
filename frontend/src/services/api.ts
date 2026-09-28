@@ -28,6 +28,11 @@ class APIError extends Error {
 
 async function request<T>(path: string, options?: FetchOptions & RequestInit): Promise<T> {
   const controller = new AbortController();
+  const token = typeof window !== 'undefined' ? localStorage.getItem('salesbrain_token') : null;
+  const headers = new Headers(options?.headers);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
   const timeoutId = setTimeout(() => controller.abort(), options?.timeout || 10000);
 
   try {

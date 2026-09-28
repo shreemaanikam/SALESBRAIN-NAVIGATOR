@@ -6,6 +6,7 @@ class Workspace(Base):
     __tablename__ = "workspaces"
 
     id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=False, server_default="legacy_user")
     filename = Column(String, nullable=False)
     filepath = Column(String, nullable=False)
     status = Column(String, default="uploaded")

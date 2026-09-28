@@ -5,16 +5,24 @@ services:
     buildCommand: |
       pip install -r backend/requirements.txt
       mkdir -p backend/app/data/uploads
+      # Run Alembic migrations automatically on deploy
+      alembic upgrade head
     startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
         value: sqlite:///./backend/app/data/salesbrain.db
+        # To use PostgreSQL in production (Recommended), provision a Render PostgreSQL DB 
+        # and override this environment variable in the Render Dashboard with the internal DB URL.
       - key: PORT
         value: 8000
+      - key: AUTH_MODE
+        value: local
+        # Set to "firebase" in production to enforce JWT validation.
     disk:
       name: salesbrain-data
       mountPath: /opt/render/project/src/backend/app/data
       sizeGB: 1
+      # Note: Persistent disk is used to store Parquet user uploads safely.
       
   - type: web
     name: salesbrain-frontend

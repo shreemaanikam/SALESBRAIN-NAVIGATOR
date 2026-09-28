@@ -10,7 +10,8 @@ import json
 import logging
 from typing import Optional, List, Dict, Any
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Query
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Query
+from backend.app.api.deps import get_current_user
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -57,7 +58,7 @@ class WorkspaceMeta(BaseModel):
 # ── Upload ────────────────────────────────────────────────────────────────
 
 @router.post("/datasets/upload")
-async def upload_dataset(file: UploadFile = File(...)):
+async def upload_dataset(file: UploadFile = File(...), user_id: str = Depends(get_current_user)):
     """
     Upload a retail CSV or XLSX file and create a new workspace.
     Returns dataset_id, profile, and quality summary.
@@ -92,12 +93,12 @@ async def upload_dataset(file: UploadFile = File(...)):
 
     # Generate workspace
     dataset_id = str(uuid.uuid4())
-    workspace_registry.create(dataset_id, filename, df)
+    workspace_registry.create(dataset_id, filename, df, user_id=user_id)
 
     # Profile and quality
     profile = profile_columns(df)
     quality = compute_quality(df)
-    workspace_registry.update(dataset_id, profile=profile, quality=quality, status="profiled")
+    workspace_registry.update(dataset_id, user_id=user_id, profile=profile, quality=quality, status="profiled")
 
     return {
         "dataset_id": dataset_id,
@@ -113,15 +114,15 @@ async def upload_dataset(file: UploadFile = File(...)):
 # ── List workspaces ────────────────────────────────────────────────────────
 
 @router.get("/datasets")
-def list_datasets():
-    return {"datasets": workspace_registry.list()}
+def list_datasets(user_id: str = Depends(get_current_user)):
+    return {"datasets": workspace_registry.list(user_id=user_id)}
 
 
 # ── Get workspace metadata ─────────────────────────────────────────────────
 
 @router.get("/datasets/{dataset_id}")
-def get_dataset(dataset_id: str):
-    ws = workspace_registry.get(dataset_id)
+def get_dataset(dataset_id: str, user_id: str = Depends(get_current_user)):
+    ws = workspace_registry.get(dataset_id, user_id=user_id)
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found.")
     return workspace_registry._public(ws)
@@ -130,8 +131,8 @@ def get_dataset(dataset_id: str):
 # ── Preview rows ───────────────────────────────────────────────────────────
 
 @router.get("/datasets/{dataset_id}/preview")
-def get_dataset_preview(dataset_id: str, rows: int = Query(default=50, le=200)):
-    ws = workspace_registry.get(dataset_id)
+def get_dataset_preview(dataset_id: str, rows: int = Query(default=50, le=200), user_id: str = Depends(get_current_user)):
+    ws = workspace_registry.get(dataset_id, user_id=user_id)
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found.")
     df = ws["df"]
@@ -162,8 +163,8 @@ def get_dataset_preview(dataset_id: str, rows: int = Query(default=50, le=200)):
 # ── Schema / profile ────────────────────────────────────────────────────────
 
 @router.get("/datasets/{dataset_id}/schema")
-def get_dataset_schema(dataset_id: str):
-    ws = workspace_registry.get(dataset_id)
+def get_dataset_schema(dataset_id: str, user_id: str = Depends(get_current_user)):
+    ws = workspace_registry.get(dataset_id, user_id=user_id)
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found.")
     return {
@@ -175,8 +176,8 @@ def get_dataset_schema(dataset_id: str):
 # ── Quality report ──────────────────────────────────────────────────────────
 
 @router.get("/datasets/{dataset_id}/quality")
-def get_dataset_quality(dataset_id: str):
-    ws = workspace_registry.get(dataset_id)
+def get_dataset_quality(dataset_id: str, user_id: str = Depends(get_current_user)):
+    ws = workspace_registry.get(dataset_id, user_id=user_id)
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found.")
     return {"dataset_id": dataset_id, "quality": ws.get("quality", {})}
@@ -185,9 +186,9 @@ def get_dataset_quality(dataset_id: str):
 # ── Map columns ─────────────────────────────────────────────────────────────
 
 @router.post("/datasets/{dataset_id}/map-columns")
-def map_columns(dataset_id: str, body: ColumnMappingRequest):
+def map_columns(dataset_id: str, body: ColumnMappingRequest, user_id: str = Depends(get_current_user)):
     """Confirm column mapping and validate which analytics are available."""
-    ws = workspace_registry.get(dataset_id)
+    ws = workspace_registry.get(dataset_id, user_id=user_id)
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found.")
     df = ws["df"]
@@ -196,7 +197,7 @@ def map_columns(dataset_id: str, body: ColumnMappingRequest):
     if not validation["valid"]:
         raise HTTPException(status_code=422, detail=" | ".join(validation["errors"]))
 
-    workspace_registry.update(dataset_id, mapping=body.mapping, status="mapped")
+    workspace_registry.update(dataset_id, user_id=user_id, mapping=body.mapping, status="mapped")
 
     return {
         "dataset_id": dataset_id,
@@ -209,12 +210,12 @@ def map_columns(dataset_id: str, body: ColumnMappingRequest):
 # ── Create / generate dashboard ─────────────────────────────────────────────
 
 @router.post("/datasets/{dataset_id}/create-dashboard")
-def create_dashboard(dataset_id: str, body: Optional[CreateDashboardRequest] = None):
+def create_dashboard(dataset_id: str, body: Optional[CreateDashboardRequest] = None, user_id: str = Depends(get_current_user)):
     """
     Compute analytics from the uploaded dataset and store the dashboard.
     Uses the mapping from body (if provided) or the previously confirmed mapping.
     """
-    ws = workspace_registry.get(dataset_id)
+    ws = workspace_registry.get(dataset_id, user_id=user_id)
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found.")
     df = ws["df"]
@@ -233,7 +234,7 @@ def create_dashboard(dataset_id: str, body: Optional[CreateDashboardRequest] = N
         raise HTTPException(status_code=422, detail=f"Analytics computation failed: {e}")
 
     workspace_registry.update(
-        dataset_id,
+        dataset_id, user_id=user_id,
         mapping=mapping,
         dashboard=dashboard,
         status="dashboard_ready"
@@ -250,8 +251,8 @@ def create_dashboard(dataset_id: str, body: Optional[CreateDashboardRequest] = N
 # ── Get dashboard ────────────────────────────────────────────────────────────
 
 @router.get("/datasets/{dataset_id}/dashboard")
-def get_dashboard(dataset_id: str):
-    ws = workspace_registry.get(dataset_id)
+def get_dashboard(dataset_id: str, user_id: str = Depends(get_current_user)):
+    ws = workspace_registry.get(dataset_id, user_id=user_id)
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found.")
     dashboard = ws.get("dashboard")
@@ -266,8 +267,8 @@ def get_dashboard(dataset_id: str):
 # ── Generate insights ───────────────────────────────────────────────────────
 
 @router.post("/datasets/{dataset_id}/generate-insights")
-def generate_insights(dataset_id: str):
-    ws = workspace_registry.get(dataset_id)
+def generate_insights(dataset_id: str, user_id: str = Depends(get_current_user)):
+    ws = workspace_registry.get(dataset_id, user_id=user_id)
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found.")
     df = ws["df"]
@@ -281,7 +282,7 @@ def generate_insights(dataset_id: str):
         logger.error(f"Insight generation error for {dataset_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Insight generation failed: {e}")
 
-    workspace_registry.update(dataset_id, insights=insights)
+    workspace_registry.update(dataset_id, user_id=user_id, insights=insights)
 
     return {
         "dataset_id": dataset_id,
@@ -294,8 +295,8 @@ def generate_insights(dataset_id: str):
 # ── Get cached insights ─────────────────────────────────────────────────────
 
 @router.get("/datasets/{dataset_id}/insights")
-def get_insights(dataset_id: str):
-    ws = workspace_registry.get(dataset_id)
+def get_insights(dataset_id: str, user_id: str = Depends(get_current_user)):
+    ws = workspace_registry.get(dataset_id, user_id=user_id)
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found.")
     insights = ws.get("insights")
@@ -307,8 +308,8 @@ def get_insights(dataset_id: str):
 # ── Generate recommendations ─────────────────────────────────────────────────
 
 @router.post("/datasets/{dataset_id}/generate-recommendations")
-def generate_recommendations(dataset_id: str):
-    ws = workspace_registry.get(dataset_id)
+def generate_recommendations(dataset_id: str, user_id: str = Depends(get_current_user)):
+    ws = workspace_registry.get(dataset_id, user_id=user_id)
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found.")
     df = ws["df"]
@@ -322,7 +323,7 @@ def generate_recommendations(dataset_id: str):
         logger.error(f"Recommendation error for {dataset_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Recommendation generation failed: {e}")
 
-    workspace_registry.update(dataset_id, recommendations=recs)
+    workspace_registry.update(dataset_id, user_id=user_id, recommendations=recs)
 
     return {
         "dataset_id": dataset_id,
@@ -335,8 +336,8 @@ def generate_recommendations(dataset_id: str):
 # ── Get cached recommendations ──────────────────────────────────────────────
 
 @router.get("/datasets/{dataset_id}/recommendations")
-def get_recommendations(dataset_id: str):
-    ws = workspace_registry.get(dataset_id)
+def get_recommendations(dataset_id: str, user_id: str = Depends(get_current_user)):
+    ws = workspace_registry.get(dataset_id, user_id=user_id)
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found.")
     recs = ws.get("recommendations")
@@ -348,8 +349,8 @@ def get_recommendations(dataset_id: str):
 # ── Export ─────────────────────────────────────────────────────────────────
 
 @router.get("/datasets/{dataset_id}/export")
-def export_dataset_report(dataset_id: str, report_type: str = Query(default="kpis")):
-    ws = workspace_registry.get(dataset_id)
+def export_dataset_report(dataset_id: str, report_type: str = Query(default="kpis"), user_id: str = Depends(get_current_user)):
+    ws = workspace_registry.get(dataset_id, user_id=user_id)
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found.")
 
@@ -405,9 +406,9 @@ def export_dataset_report(dataset_id: str, report_type: str = Query(default="kpi
 # ── Delete workspace ────────────────────────────────────────────────────────
 
 @router.delete("/datasets/{dataset_id}")
-def delete_dataset(dataset_id: str):
-    ws = workspace_registry.get(dataset_id)
+def delete_dataset(dataset_id: str, user_id: str = Depends(get_current_user)):
+    ws = workspace_registry.get(dataset_id, user_id=user_id)
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found.")
-    workspace_registry.delete(dataset_id)
+    workspace_registry.delete(dataset_id, user_id=user_id)
     return {"dataset_id": dataset_id, "message": "Workspace deleted."}

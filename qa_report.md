@@ -176,3 +176,35 @@ Visit `http://localhost:3000` to interact with the tested system.
 
 **5. Testing (Phase 9 & 10):**
 - Ran full regression suites across backend (`pytest`) and frontend (`tsc --noEmit`, `npm run build`). All tests pass 100%. The application is production-ready.
+
+## Iteration 9 - Authentication, Tenant Isolation & Production Readiness (Phase 12)
+**Status:** ✅ Implemented
+**Goal:** Harden the application so each authenticated user can only access their own workspaces, prepare the database layer for PostgreSQL, and ensure local parity.
+
+**1. Database PostgreSQL Readiness & Alembic Migrations:**
+- Updated the `database.py` connection engine. When using PostgreSQL (`DATABASE_URL=postgresql://...`), it automatically enables a connection pool (`pool_size=5`, `max_overflow=10`). SQLite bypasses these settings to prevent thread errors.
+- Integrated `Alembic` for schema migrations. Created the initial migration to inject `user_id` into the existing `workspaces` table without destroying data.
+
+**2. Authentication System (JWT/Firebase & Local Mock):**
+- Authored a dynamic `get_current_user` FastAPI dependency (`backend/app/api/deps.py`) using `HTTPBearer`.
+- Implemented `AUTH_MODE=local` to allow developers to build without credentials (assigns a mock user ID).
+- Implemented `AUTH_MODE=firebase` to strictly decode JWT tokens using `firebase-admin.auth.verify_id_token`.
+- **Security Constraint:** If `AUTH_MODE=local` is accidentally deployed to production (e.g. `RENDER=true`), the backend strictly fails closed with an HTTP 500 error, preventing unauthorized bypasses.
+
+**3. Tenant Isolation & Ownership:**
+- Patched all core endpoints in `datasets.py` (`upload`, `list`, `map-columns`, `create-dashboard`, `insights`, `export`, `preview`) to inject the `user_id` via dependency injection.
+- Refactored `WorkspaceRegistry` to append `user_id` filters to all SQLAlchemy `query.filter()` calls. 
+- A user can now only read, mutate, or delete a workspace they own. Verified via automated testing (`test_tenant_isolation`).
+
+**4. Frontend Authentication Integration:**
+- Created a `login` view (`frontend/src/app/login/page.tsx`) matching the app's design system.
+- Created `AuthContext.tsx` to wrap the application logic. Unauthenticated users visiting `/dashboard` are immediately pushed to `/login`.
+- Patched `api.ts` to automatically read the session token and append it as an `Authorization: Bearer <token>` header to all backend HTTP calls.
+
+**5. Render Deployment Updates:**
+- Modified `render.yaml` to automatically execute `alembic upgrade head` during the backend `buildCommand`.
+- Embedded documentation pointing out where to substitute the SQLite URL with the Render PostgreSQL internal connection string.
+
+**6. Quality Assurance:**
+- **Tests Passed:** `test_auth.py` successfully caught missing tokens and proved that `user_a` cannot query datasets created by `user_b`. All 48 regression tests passed.
+- **Frontend Build:** `npm run build` completed successfully, ensuring the new Context API does not break static generation.
