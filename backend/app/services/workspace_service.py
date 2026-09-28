@@ -258,7 +258,7 @@ def compute_dashboard(df: pd.DataFrame, mapping: Dict[str, str]) -> Dict:
     for concept in numeric_concepts:
         c = col(concept)
         if c and not pd.api.types.is_numeric_dtype(df[c]):
-            df[c] = pd.to_numeric(df[c].astype(str).str.replace(r'[$, ]', '', regex=True), errors='coerce').fillna(0.0)
+            df[c] = pd.to_numeric(df[c].astype(str).str.replace(r'[^\d\.\-]', '', regex=True), errors='coerce').fillna(0.0)
 
     # ── KPIs ──
     kpis = []
@@ -600,7 +600,7 @@ def validate_mapping(df: pd.DataFrame, mapping: Dict[str, str]) -> Dict:
             if concept in numeric_concepts:
                 if not pd.api.types.is_numeric_dtype(df[col_name]):
                     # Check if it can be coerced
-                    coerced = pd.to_numeric(df[col_name].astype(str).str.replace(r'[$,]', '', regex=True), errors='coerce')
+                    coerced = pd.to_numeric(df[col_name].astype(str).str.replace(r'[^\d\.\-]', '', regex=True), errors='coerce')
                     if coerced.isna().sum() > len(df) * 0.5:
                         errors.append(f"Column '{col_name}' mapped to '{concept}' contains too many non-numeric values.")
             

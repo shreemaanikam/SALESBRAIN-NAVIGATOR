@@ -194,10 +194,7 @@ def map_columns(dataset_id: str, body: ColumnMappingRequest):
 
     validation = validate_mapping(df, body.mapping)
     if not validation["valid"]:
-        raise HTTPException(status_code=422, detail={
-            "errors": validation["errors"],
-            "message": "Column mapping contains invalid column references."
-        })
+        raise HTTPException(status_code=422, detail=" | ".join(validation["errors"]))
 
     workspace_registry.update(dataset_id, mapping=body.mapping, status="mapped")
 
