@@ -393,7 +393,8 @@ def export_dataset_report(dataset_id: str, report_type: str = Query(default="kpi
         writer = csv.DictWriter(stream, fieldnames=["label", "value"])
         writer.writeheader()
         for kpi in dashboard.get("kpis", []):
-            writer.writerow({"label": kpi.get("label", ""), "value": kpi.get("value", "")})
+            # Export the raw numeric value for better Excel compatibility, fallback to formatted value
+            writer.writerow({"label": kpi.get("label", ""), "value": kpi.get("raw", kpi.get("value", ""))})
         dl_name = f"{filename_base}_kpis.csv"
 
     response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
