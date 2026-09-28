@@ -253,6 +253,13 @@ def compute_dashboard(df: pd.DataFrame, mapping: Dict[str, str]) -> Dict:
         c = m.get(concept)
         return c if c and c in df.columns else None
 
+    # Force coerce numeric columns to prevent string concatenation sums (e.g. string to float errors)
+    numeric_concepts = ["sales", "profit", "discount", "quantity", "shipping_cost"]
+    for concept in numeric_concepts:
+        c = col(concept)
+        if c and not pd.api.types.is_numeric_dtype(df[c]):
+            df[c] = pd.to_numeric(df[c].astype(str).str.replace(r'[$, ]', '', regex=True), errors='coerce').fillna(0.0)
+
     # ── KPIs ──
     kpis = []
     if col("sales"):
