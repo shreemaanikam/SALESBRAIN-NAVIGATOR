@@ -6,7 +6,10 @@
  * Falls back to mock data when the backend is unavailable.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
+let API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
+if (API_BASE && !API_BASE.endsWith('/api/v1')) {
+  API_BASE = `${API_BASE}/api/v1`;
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 

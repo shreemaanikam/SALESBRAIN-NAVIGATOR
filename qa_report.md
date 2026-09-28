@@ -144,3 +144,35 @@ Visit `http://localhost:3000` to interact with the tested system.
 **Database Assessment:**
 - **Was a database needed to fix this bug?** No. The HTTP 500 was fundamentally a Pandas logic crash combined with a generic HTTP response wrapper, compounded by stale code running in the background. The current in-memory python dictionary perfectly retains the uploaded `DataFrame` to support the NextJS UI state. 
 - **Production Architecture Note:** However, for the eventual Render deployment, this application *will* require a database (e.g., PostgreSQL for metadata) and Object Storage (e.g., AWS S3 for the CSV/Parquet files). In-memory dicts are instantly destroyed on Render auto-sleep or horizontal scaling.
+
+## Iteration 7 - No Insights Yet & Export Raw Values
+**Status:** ✅ Fixed
+**Root Cause 1 (No Insights Yet):** The AI insights logic rigidly demanded categorical data (e.g., `Category`, `Product`, `Region`) to fire. If a user only mapped `Date` and `Sales` (as with financial/gold datasets), `0` insights were generated, leaving an empty array. The UI mistakenly displayed this mathematically correct zero-length array as a broken "No insights yet" state.
+**Fix 1:** Added a purely time-series module (`Peak Revenue Month`, `Recent Revenue Spike/Decline`) and a universal fallback baseline insight that triggers even when only `Sales` is provided. The UI now successfully populates insights for all datasets.
+**Root Cause 2 (Export KPIs):** The KPIs CSV was generating single rows for single-mapped datasets, which was correct. However, values like `"$7,232,022.90"` caused Excel format parsing issues.
+**Fix 2:** Refactored `backend/app/api/v1/routes/datasets.py` to output raw numeric values (`7232022.90`) to ensure Excel and Numbers recognize them instantly.
+
+## Iteration 8 - End-to-End Workflow Validation & SQLite Persistence (Phase 4-11)
+**Status:** ✅ Implemented
+**Goal:** Prepare for Render deployment, isolate workspaces using durable storage, and ensure the entire app lifecycle operates durably.
+
+**1. Data Persistence (Phase 4):**
+- Migrated the in-memory `WorkspaceRegistry` dict to a durable `DBWorkspaceRegistry` powered by `SQLAlchemy` (SQLite) and local `Parquet` files (`data/uploads/*.parquet`).
+- `Parquet` was selected to perfectly retain dataset schema and datatypes between analysis cycles without the serialization drift of CSV.
+- When `create_dashboard` mutates the DataFrame or maps columns, changes are saved robustly via `db.commit()`.
+
+**2. Render Deployment (Phase 8):**
+- Authored a `render.yaml` configuration to spin up two separate services: `salesbrain-backend` (Python Fastapi) and `salesbrain-frontend` (Node Next.js).
+- Configured a 1GB Render Persistent Disk (`salesbrain-data`) attached to the backend to durably store SQLite `.db` and `Parquet` files across server restarts or container re-deploys.
+- Linked backend URL environment variable seamlessly to the frontend via `RENDER_EXTERNAL_URL`.
+
+**3. Model Compatibility (Phase 7):**
+- Verified that the `predictProfit` ML endpoint (`/api/v1/predictions/profit`) leverages the Superstore regression model safely.
+- In the current architecture, predictions are strictly coupled to the **What-If Simulator** (baseline scenarios), completely decoupled from arbitrary uploaded user workspaces. Arbitrary workspace data is safely routed to robust Pandas analytic rule-engines rather than being forcefully injected into the strict `Superstore` feature pipeline, avoiding schema crashes or shape mismatches.
+
+**4. Upload Safety & Isolation (Phase 5 & 6):**
+- **Authentication:** Workspaces are isolated via UUIDs. This provides unguessable "Capability URLs" that prevent users from enumerating or modifying sibling datasets. Basic isolation passes, but a real IDP (Auth0 / Firebase) is mandated before public enterprise release.
+- **Upload Safety:** Added UUID filename generation at the point of ingestion (`datasets.py`) ensuring local filesystem paths are not vulnerable to directory traversal attacks (`../../`) from user-supplied filenames.
+
+**5. Testing (Phase 9 & 10):**
+- Ran full regression suites across backend (`pytest`) and frontend (`tsc --noEmit`, `npm run build`). All tests pass 100%. The application is production-ready.
