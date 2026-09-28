@@ -42,13 +42,13 @@ const CONCEPTS = [
   { key: 'order_priority',label: 'Order Priority',  required: false, group: 'order' },
 ] as const;
 
-const CONCEPT_GROUPS: Record<string, string> = {
-  order: 'Order Information',
-  finance: 'Financial Metrics',
-  product: 'Product Details',
-  customer: 'Customer Information',
-  geo: 'Geographic Data',
-};
+// const CONCEPT_GROUPS: Record<string, string> = {
+//   order: 'Order Information',
+//   finance: 'Financial Metrics',
+//   product: 'Product Details',
+//   customer: 'Customer Information',
+//   geo: 'Geographic Data',
+// };
 
 type Step = 'upload' | 'preview' | 'map' | 'create';
 
@@ -71,7 +71,7 @@ export default function UploadWizardPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<any>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
-  // We no longer need to track validationResult locally as the step check is sufficient.
+  
   const [creating, setCreating] = useState(false);
   const [createProgress, setCreateProgress] = useState('');
   const [error, setError] = useState('');
@@ -123,22 +123,28 @@ export default function UploadWizardPage() {
   // ── Step 3: Validate and proceed ──────────────────────────────────────
   async function handleValidateMapping() {
     setError('');
-    const filledEntries = Object.entries(mapping).filter(([, v]) => v && v !== '');
-    if (filledEntries.length === 0) {
-      setError('Please map at least one column before continuing.');
-      return;
-    }
-    // Client-side check: must have at least 'sales'
     const salesMapped = Object.entries(mapping).some(([k, v]) => k === 'sales' && v);
     if (!salesMapped) {
       setError("Please map the 'Sales / Revenue' column — it's required for analytics.");
       return;
     }
-    // We proceed to create
-    setStep('create');
+    
+    try {
+      setCreating(true);
+      const res = await mapDatasetColumns(uploadResult.dataset_id, mapping);
+      if (!res.validation.valid) {
+        setError(res.validation.errors.join(' | '));
+        return;
+      }
+      
+      setStep('create');
+    } catch (e: any) {
+      setError(e.message || 'Validation failed.');
+    } finally {
+      setCreating(false);
+    }
   }
 
-  // ── Step 4: Create dashboard ──────────────────────────────────────────
   async function handleCreateDashboard() {
     if (!uploadResult?.dataset_id) return;
     setCreating(true);
@@ -146,8 +152,7 @@ export default function UploadWizardPage() {
     const id = uploadResult.dataset_id;
 
     try {
-      setCreateProgress('Confirming column mapping…');
-      await mapDatasetColumns(id, mapping);
+      setCreateProgress('Validating mapping…');
 
       setCreateProgress('Computing analytics from your data…');
       await createWorkspaceDashboard(id, mapping);
@@ -378,39 +383,57 @@ export default function UploadWizardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5 p-6">
-            {Object.entries(CONCEPT_GROUPS).map(([group, groupLabel]) => {
-              const groupConcepts = CONCEPTS.filter((c) => c.group === group);
-              return (
-                <div key={group}>
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">{groupLabel}</h3>
-                  <div className="space-y-2">
-                    {groupConcepts.map((concept) => (
-                      <div key={concept.key} className="flex items-center gap-3">
-                        <label className="w-40 shrink-0 text-sm text-slate-700 dark:text-slate-300">
-                          {concept.label}
-                          {concept.required && <span className="text-red-500 ml-0.5">*</span>}
-                        </label>
-                        <select
-                          value={mapping[concept.key] || ''}
-                          onChange={(e) => setMapping((m) => ({ ...m, [concept.key]: e.target.value }))}
-                          className="flex-1 text-sm border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="">— not mapped —</option>
-                          {uploadResult.profile?.columns?.map((col: string) => (
-                            <option key={col} value={col}>{col}</option>
-                          ))}
-                        </select>
-                        {mapping[concept.key] ? (
-                          <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
-                        ) : (
-                          <div className="w-4 h-4 shrink-0" />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+            <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-lg">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50 dark:bg-slate-800 text-xs text-slate-500 dark:text-slate-400 uppercase">
+                  <tr>
+                    <th className="px-4 py-3">Business field</th>
+                    <th className="px-4 py-3">Uploaded column</th>
+                    <th className="px-4 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {CONCEPTS.map((concept) => {
+                    const isMapped = !!mapping[concept.key];
+                    const isRequired = concept.required;
+                    const isMissingReq = isRequired && !isMapped;
+                    return (
+                      <tr key={concept.key} className={isMissingReq ? "bg-red-50/50 dark:bg-red-900/10" : ""}>
+                        <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">
+                          {concept.label} {isRequired && <span className="text-red-500">*</span>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <select
+                            value={mapping[concept.key] || ''}
+                            onChange={(e) => setMapping((m) => ({ ...m, [concept.key]: e.target.value }))}
+                            className={cn(
+                              "w-full text-sm border rounded-lg px-3 py-1.5 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500",
+                              isMissingReq ? "border-red-300 dark:border-red-700" : "border-slate-200 dark:border-slate-700"
+                            )}
+                          >
+                            <option value="">— Select column —</option>
+                            {uploadResult.profile?.columns?.map((col: string) => (
+                              <option key={col} value={col}>{col}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-4 py-3">
+                          {isMapped ? (
+                            <span className="flex items-center gap-1 text-green-600 dark:text-green-400 text-xs font-medium">
+                              <CheckCircle className="w-3.5 h-3.5" /> Confirmed
+                            </span>
+                          ) : isRequired ? (
+                            <span className="text-red-500 text-xs font-medium">Required</span>
+                          ) : (
+                            <span className="text-slate-400 text-xs">Optional</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
             {/* Module availability preview */}
             {uploadResult.profile?.available_modules && (

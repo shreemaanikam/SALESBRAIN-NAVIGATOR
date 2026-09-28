@@ -156,16 +156,33 @@ def profile_columns(df: pd.DataFrame) -> Dict:
 
     # Auto-suggest mappings
     suggested: Dict[str, str] = {}
+    used_sources = set()
+
     for concept, hints in CONCEPT_HINTS.items():
+        # Exact match
         for hint in hints:
-            if hint in col_lower:
+            if hint in col_lower and col_lower[hint] not in used_sources:
                 suggested[concept] = col_lower[hint]
+                used_sources.add(col_lower[hint])
                 break
-            # Partial match fallback
-            for raw_lower, raw_orig in col_lower.items():
-                if hint in raw_lower or raw_lower in hint:
-                    if concept not in suggested:
+        
+        # If not exact match, do a conservative partial match
+        if concept not in suggested:
+            for hint in hints:
+                if len(hint) < 4:
+                    continue  # Too short for partial match
+                for raw_lower, raw_orig in col_lower.items():
+                    if raw_orig in used_sources:
+                        continue
+                    # Check for whole word match within the string or start/end
+                    import re
+                    pattern = rf"(^|_|){re.escape(hint)}(_||$)"
+                    if re.search(pattern, raw_lower) and raw_orig not in used_sources:
                         suggested[concept] = raw_orig
+                        used_sources.add(raw_orig)
+                        break
+                if concept in suggested:
+                    break
 
     # Determine which analytics modules are available
     available_modules = _determine_modules(suggested, df)
@@ -267,7 +284,7 @@ def compute_dashboard(df: pd.DataFrame, mapping: Dict[str, str]) -> Dict:
         dft = dft.dropna(subset=[col("order_date")])
         if not dft.empty:
             dft["_period"] = dft[col("order_date")].dt.to_period("M")
-            trend = dft.groupby("_period")[col("sales")].sum().reset_index()
+            trend = dft.groupby("_period").agg(sales=(col("sales"), "sum")).reset_index()
             trend["_period"] = trend["_period"].astype(str)
             profit_col = col("profit")
             if profit_col:
@@ -275,12 +292,12 @@ def compute_dashboard(df: pd.DataFrame, mapping: Dict[str, str]) -> Dict:
                 dft2[col("order_date")] = pd.to_datetime(dft2[col("order_date")], errors="coerce")
                 dft2 = dft2.dropna(subset=[col("order_date")])
                 dft2["_period"] = dft2[col("order_date")].dt.to_period("M")
-                profit_trend = dft2.groupby("_period")[profit_col].sum().reset_index()
+                profit_trend = dft2.groupby("_period").agg(profit=(profit_col, "sum")).reset_index()
                 profit_trend["_period"] = profit_trend["_period"].astype(str)
-                trend = trend.merge(profit_trend[["_period", profit_col]], on="_period", how="left")
-                trend = trend.rename(columns={col("sales"): "sales", profit_col: "profit", "_period": "period"})
+                trend = trend.merge(profit_trend[["_period", "profit"]], on="_period", how="left")
+                trend = trend.rename(columns={"_period": "period"})
             else:
-                trend = trend.rename(columns={col("sales"): "sales", "_period": "period"})
+                trend = trend.rename(columns={"_period": "period"})
             result["sales_trend"] = _safe_records(trend)
         else:
             result["sales_trend"] = []
@@ -290,12 +307,12 @@ def compute_dashboard(df: pd.DataFrame, mapping: Dict[str, str]) -> Dict:
     # ── Category Breakdown ──
     cat_col = col("category") or col("sub_category")
     if col("sales") and cat_col:
-        cat_df = df.groupby(cat_col)[col("sales")].sum().reset_index()
-        cat_df.columns = ["name", "value"]
+        cat_df = df.groupby(cat_col).agg(value=(col("sales"), "sum")).reset_index()
+        cat_df = cat_df.rename(columns={cat_col: "name"})
         cat_df = cat_df.sort_values("value", ascending=False).head(10)
         if col("profit"):
-            p = df.groupby(cat_col)[col("profit")].sum().reset_index()
-            p.columns = ["name", "profit"]
+            p = df.groupby(cat_col).agg(profit=(col("profit"), "sum")).reset_index()
+            p = p.rename(columns={cat_col: "name"})
             cat_df = cat_df.merge(p, on="name", how="left")
         result["category_breakdown"] = _safe_records(cat_df)
     else:
@@ -304,12 +321,12 @@ def compute_dashboard(df: pd.DataFrame, mapping: Dict[str, str]) -> Dict:
     # ── Product Performance ──
     prod_col = col("product_name") or col("product_id")
     if col("sales") and prod_col:
-        prod_df = df.groupby(prod_col)[col("sales")].sum().reset_index()
-        prod_df.columns = ["name", "sales"]
+        prod_df = df.groupby(prod_col).agg(sales=(col("sales"), "sum")).reset_index()
+        prod_df = prod_df.rename(columns={prod_col: "name"})
         prod_df = prod_df.sort_values("sales", ascending=False).head(15)
         if col("profit"):
-            pp = df.groupby(prod_col)[col("profit")].sum().reset_index()
-            pp.columns = ["name", "profit"]
+            pp = df.groupby(prod_col).agg(profit=(col("profit"), "sum")).reset_index()
+            pp = pp.rename(columns={prod_col: "name"})
             prod_df = prod_df.merge(pp, on="name", how="left")
         result["product_performance"] = _safe_records(prod_df)
     else:
@@ -318,12 +335,12 @@ def compute_dashboard(df: pd.DataFrame, mapping: Dict[str, str]) -> Dict:
     # ── Geographic Summary ──
     geo_col = col("region") or col("country") or col("market")
     if col("sales") and geo_col:
-        geo_df = df.groupby(geo_col)[col("sales")].sum().reset_index()
-        geo_df.columns = ["name", "sales"]
+        geo_df = df.groupby(geo_col).agg(sales=(col("sales"), "sum")).reset_index()
+        geo_df = geo_df.rename(columns={geo_col: "name"})
         geo_df = geo_df.sort_values("sales", ascending=False)
         if col("profit"):
-            gp = df.groupby(geo_col)[col("profit")].sum().reset_index()
-            gp.columns = ["name", "profit"]
+            gp = df.groupby(geo_col).agg(profit=(col("profit"), "sum")).reset_index()
+            gp = gp.rename(columns={geo_col: "name"})
             geo_df = geo_df.merge(gp, on="name", how="left")
         result["geographic"] = _safe_records(geo_df)
     else:
@@ -331,11 +348,11 @@ def compute_dashboard(df: pd.DataFrame, mapping: Dict[str, str]) -> Dict:
 
     # ── Segment Analysis ──
     if col("sales") and col("segment"):
-        seg_df = df.groupby(col("segment"))[col("sales")].sum().reset_index()
-        seg_df.columns = ["name", "sales"]
+        seg_df = df.groupby(col("segment")).agg(sales=(col("sales"), "sum")).reset_index()
+        seg_df = seg_df.rename(columns={col("segment"): "name"})
         if col("profit"):
-            sp = df.groupby(col("segment"))[col("profit")].sum().reset_index()
-            sp.columns = ["name", "profit"]
+            sp = df.groupby(col("segment")).agg(profit=(col("profit"), "sum")).reset_index()
+            sp = sp.rename(columns={col("segment"): "name"})
             seg_df = seg_df.merge(sp, on="name", how="left")
         result["segment"] = _safe_records(seg_df)
     else:
@@ -553,9 +570,18 @@ def validate_mapping(df: pd.DataFrame, mapping: Dict[str, str]) -> Dict:
     warnings = []
     info = []
 
+    # Check for missing columns and duplicates
+    seen_cols = {}
     for concept, col_name in mapping.items():
+        if not col_name:
+            continue
         if col_name not in df.columns:
             errors.append(f"Mapped column '{col_name}' for '{concept}' not found in dataset.")
+        else:
+            if col_name in seen_cols:
+                errors.append(f"Source column '{col_name}' is mapped multiple times (to '{seen_cols[col_name]}' and '{concept}').")
+            else:
+                seen_cols[col_name] = concept
 
     has = lambda c: c in mapping and mapping.get(c, "") in df.columns
 

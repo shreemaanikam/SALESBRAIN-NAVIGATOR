@@ -106,3 +106,19 @@ Visit `http://localhost:3000` to interact with the tested system.
 - **Render Deployment Configuration**: Created `render.yaml` declaring `salesbrain-frontend` (Node/Next.js) and `salesbrain-backend` (Python/FastAPI) services. Backend build script is set to dynamically train the ML model (`train.py`) to bypass the GitHub 100MB file limit for `profit_model.joblib`. CORS and env variables set correctly via Render configuration.
 - **Customer Segment Overflow**: Refactored the 'Customer & Segment Intelligence' page's metric card layout. Moved from an inflexible flex layout to a robust CSS grid (`grid-cols-2 gap-4`), ensuring long numbers like Total Sales and individual metrics (Profit, Margin, Orders) fit neatly without overlapping borders on all viewports.
 - **Appearance Toggle**: Repaired Next.js dark mode. The `Settings` appearance controls correctly trigger system, light, and dark modes globally. Fixed root cause by inserting `darkMode: 'class'` inside `tailwind.config.ts`, syncing `next-themes` with Tailwind CSS v3.
+
+## Iteration 5 - Create Dashboard Analytics Error & Column Mapping Fixes
+**Status:** ✅ Fixed
+**Root Cause:** The `profile_columns` function in `workspace_service.py` was too aggressive with substring matching, causing columns like `date`, `open`, `high`, `low` to map to incorrect business concepts (e.g. `order_id -> high`, `sales -> open`). When multiple concepts mapped to the same underlying column (e.g., both mapped to `open`), the `compute_dashboard` function grouped by the column and aggregated it using identical names, then called `reset_index()`. In pandas, this attempted to insert an index name that already existed as a column name, resulting in `ValueError: cannot insert <col_name>, already exists`.
+**Fix Details:**
+1. Modified `profile_columns` to enforce exact matches first and significantly tighten fuzzy substring matching. A source column is now immediately locked and removed from `used_sources` to prevent reuse across multiple business concepts during auto-mapping.
+2. Updated `validate_mapping` to explicitly prevent and reject duplicate source mappings during manual confirmation.
+3. Completely refactored all `groupby().sum().reset_index()` operations in `workspace_service.py` to use safe, named aggregations (e.g., `agg(sales=(col, "sum"))`). This inherently prevents index/column name collisions when generating aggregated dataframes, ensuring dashboard compilation won't crash even if duplicate mappings were somehow forced.
+4. Refactored the My Data column mapping wizard UI in `frontend/src/app/dashboard/my-data/upload/page.tsx` to use an intuitive Table layout (`Business field | Uploaded column | Status`), checking for missing required fields dynamically. 
+5. Enhanced the client-side UI to invoke `/map-columns` and display validation failures robustly before advancing to the dashboard creation stage, preventing crashes.
+6. Expanded `test_workspace_mapping.py` unit tests with specific focus on ensuring OHLC financial data is safely ignored, duplicate mappings fail, and pandas aggregations execute without error.
+**Verification:**
+- `pytest` passed for all new column mapping regression scenarios and dataset lifecycle tests.
+- UI mapping screen confirms cleanly with validation errors isolated to step 3.
+- Build and linting checks passed successfully.
+
