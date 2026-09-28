@@ -1,112 +1,114 @@
 # SalesBrain Navigator
 
-An AI-Powered Retail Intelligence and Decision Support System.
-
-SalesBrain Navigator is an enterprise-grade web application that leverages machine learning to predict transaction-level profit, detect risks, generate automated business recommendations, and simulate 'what-if' scenarios.
-
-## Features
-
-- **Executive Dashboard**: High-level KPIs and real-time business pulse.
-- **Sales & Profitability Analytics**: Interactive visualizations of historical data.
-- **AI Insights & Recommendations**: Rule-based engine highlighting risks and opportunities.
-- **What-If Simulator**: Estimate profit outcomes of proposed pricing and shipping changes using an ensemble machine learning model.
-- **Risk Center**: Detect statistical outliers and margin compression dynamically.
-- **Reports**: Export capabilities for executive and operational datasets.
+SalesBrain Navigator is a full-stack, AI-driven retail analytics dashboard built with Next.js, FastAPI, and Pandas. It provides dynamic profiling, visualization, and strategic recommendations for CSV and Excel datasets.
 
 ## Architecture
 
-- **Backend**: FastAPI (Python 3.11), Pandas, scikit-learn (Voting Ensemble: ExtraTrees, RandomForest, GradientBoosting, etc.).
-- **Frontend**: Next.js 14 (React 18), Tailwind CSS, Zustand, Recharts, React Three Fiber.
-- **Integration**: Full REST API connecting the frontend with real-time data analysis and machine learning artifacts.
-
-## Quick Start
-
-### 1. Requirements
-- Python 3.11
-- Node.js 18+
-
-### 2. Backend Setup
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r backend/requirements.txt
-```
-
-Set up environment variables:
-```bash
-cp .env.example .env
-```
-Ensure `dataset/Cleaned_SuperStore.csv` is present.
-
-### 3. Machine Learning Training
-Train the model artifacts before starting the backend:
-```bash
-python -m backend.app.ml.train
-```
-
-### 4. Start Backend
-```bash
-uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
-```
-
-### 5. Frontend Setup
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-The application will be available at `http://localhost:3000`.
-
-## Testing
-
-Run the comprehensive backend test suite:
-```bash
-pytest backend/tests/ -v
-```
-
-## Deployment
-
-A `Dockerfile` and `docker-compose.yml` are provided for containerized deployment.
-```bash
-docker-compose up --build
-```
+- **Frontend:** Next.js (React 18), Tailwind CSS, Lucide Icons, Recharts, Zustand.
+- **Backend:** FastAPI, Pandas, NumPy, Scikit-learn, Shap, Python 3.11.
+- **Database:** PostgreSQL (Production) / SQLite (Local dev), SQLAlchemy, Alembic.
+- **Authentication:** Firebase Client SDK (Frontend) & Firebase Admin SDK (Backend JWT Verification).
+- **Storage:** Local Parquet files (Durable disk in Production).
 
 ---
 
-## 🔒 Authentication & Database Configuration (Production Readiness)
+## Local Development (Mock Authentication)
 
-SalesBrain Navigator is equipped with robust Tenant Isolation, Authentication flows, and Database pooling suited for local development and scalable production.
+The default configuration enables a mocked authentication flow and a local SQLite database, so you don't need Firebase credentials to build or test.
 
-### Database Operations (SQLite vs PostgreSQL)
-The application seamlessly toggles between SQLite (Local) and PostgreSQL (Production) based on the `DATABASE_URL` environment variable.
+1. **Install Backend Dependencies:**
+   ```bash
+   cd backend
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   alembic upgrade head
+   ```
 
-- **Local:** `DATABASE_URL=sqlite:///./backend/app/data/salesbrain.db`
-- **Production:** `DATABASE_URL=postgresql://user:password@hostname:5432/dbname` (Configure in Render Dashboard).
+2. **Run Backend:**
+   ```bash
+   AUTH_MODE=local uvicorn app.main:app --reload
+   ```
 
-**Running Migrations:**
-We use `Alembic` to manage database schema updates. Before running the backend for the first time, or after pulling new code, run:
+3. **Install Frontend Dependencies:**
+   ```bash
+   cd frontend
+   npm install
+   ```
+
+4. **Run Frontend:**
+   ```bash
+   NEXT_PUBLIC_AUTH_MODE=local npm run dev
+   ```
+
+*(In local mode, the `/login` page allows you to bypass Firebase by typing any email to generate a dummy session).*
+
+---
+
+## Production Deployment (Render + Firebase + PostgreSQL)
+
+To deploy securely to production, follow these steps to configure real services.
+
+### 1. Provision a PostgreSQL Database
+The app explicitly blocks SQLite in production (`RENDER=true` or `ENVIRONMENT=production`). 
+- In your Render Dashboard, create a **PostgreSQL** database.
+- Copy the **Internal Database URL**.
+
+### 2. Configure Firebase Authentication
+- Create a project in the [Firebase Console](https://console.firebase.google.com/).
+- Navigate to **Authentication** > **Sign-in method** and enable **Email/Password**.
+- Navigate to **Project Settings** > **Service Accounts** and click **Generate new private key**. Copy the raw JSON file contents.
+- In **Project Settings** > **General**, register a Web App and copy the `firebaseConfig` object values.
+- Navigate to **Authentication** > **Settings** > **Authorized domains** and ensure your production frontend domain (e.g., `your-app.onrender.com`) is listed.
+
+### 3. Deploy via Render Blueprint
+Connect this repository to Render using the provided `render.yaml` Blueprint.
+
+#### Backend Required Environment Variables (Render Dashboard):
+* `DATABASE_URL`: Your PostgreSQL Internal Database URL (e.g., `postgresql://user:password@host:5432/dbname`)
+* `AUTH_MODE`: `firebase`
+* `FIREBASE_SERVICE_ACCOUNT`: The complete raw JSON string you copied from Firebase Service Accounts.
+
+#### Frontend Required Environment Variables (Render Dashboard):
+* `NEXT_PUBLIC_AUTH_MODE`: `firebase`
+* `NEXT_PUBLIC_FIREBASE_API_KEY`: Your Firebase Web API Key.
+* `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`: `your-project.firebaseapp.com`
+* `NEXT_PUBLIC_FIREBASE_PROJECT_ID`: `your-project-id`
+* `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`: `your-project.firebasestorage.app`
+* `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`: `your-sender-id`
+* `NEXT_PUBLIC_FIREBASE_APP_ID`: `your-app-id`
+*(Note: `NEXT_PUBLIC_API_BASE_URL` is automatically configured via `RENDER_EXTERNAL_URL` in the Blueprint).*
+
+### 4. Data Persistence & Migrations
+The Render Blueprint automatically mounts a 1GB persistent disk at `/opt/render/project/src/backend/app/data` to retain uploaded Parquet files.
+Alembic schema migrations automatically run during the build step (`alembic upgrade head`) ensuring PostgreSQL is up to date before traffic is routed.
+
+### 5. Smoke Testing the Live Application
+1. Navigate to your deployed Frontend URL (HTTPS).
+2. Create a test account or sign in with an existing Firebase identity.
+3. Open **My Data** and upload a synthetic CSV file.
+4. Verify the dashboard, insights, and recommendations generate successfully.
+5. Attempt to access the same workspace via another user account or incognito window to verify strict Tenant Isolation.
+
+---
+
+## Testing & Quality Assurance
+
+### Run Backend Tests (Pytest)
+Includes rigorous testing for token verification, tenant data-isolation, and legacy workspace segregation.
 ```bash
 cd backend
-alembic upgrade head
+python -m pytest tests/ -v
 ```
 
-### Authentication Modes
-The application supports two modes controlled by `AUTH_MODE` in your `.env`.
+### Run Frontend Build
+```bash
+cd frontend
+npm run build
+```
 
-**1. Local Development (`AUTH_MODE=local`)**
-Bypasses strict JWT validation and assigns a mock user ID for frictionless UI testing. *Note: The backend will crash intentionally if this mode is accidentally pushed to a production environment.*
-
-**2. Production (`AUTH_MODE=firebase`)**
-Enforces strict JWT token validation. To enable:
-1. Set up a Firebase project and enable Email/Password Authentication.
-2. Obtain the Firebase Admin SDK private key JSON.
-3. Configure the frontend `AuthContext.tsx` to use the Firebase JS SDK `signInWithEmailAndPassword` method to retrieve the real JWT token.
-4. Set `AUTH_MODE=firebase` in your Render environment variables.
-
-### Troubleshooting
-- **401 Unauthorized:** Ensure the frontend is correctly storing the token in `localStorage` and `api.ts` is attaching it to the `Authorization: Bearer <token>` header.
-- **500 Internal Server Error (Auth):** If deployed to Render, ensure `AUTH_MODE` is explicitly set to `firebase`.
-- **Database Missing Column:** You forgot to run `alembic upgrade head`.
-
----
+## Security & Known Risks
+- **Tenant Isolation:** Active on all data operations. Endpoints are strictly protected by Firebase JWT validation.
+- **Secret Management:** Production credentials must be exclusively stored in the hosting provider's Secrets Manager, NEVER in `.env` files or Git.
+- **Upload Safety:** Datasets are converted to Parquet natively. Arbitrary filesystem access is blocked; identifiers enforce UUID boundaries.
+- **Database Backup:** Render automatically backs up managed PostgreSQL instances. You must separately backup the `salesbrain-data` disk if Parquet files are critical for long-term storage.
