@@ -15,6 +15,44 @@ class RecommendationService:
             
         recs = []
         
+        if 'order_date' in df.columns and 'sales' in df.columns:
+            try:
+                dft = df.copy()
+                dft['order_date'] = pd.to_datetime(dft['order_date'], errors='coerce')
+                dft = dft.dropna(subset=['order_date'])
+                if not dft.empty:
+                    dft['_period'] = dft['order_date'].dt.to_period('M')
+                    trend = dft.groupby('_period')['sales'].sum()
+                    if len(trend) >= 3:
+                        recent_sales = float(trend.iloc[-1])
+                        prev_sales = float(trend.iloc[-2])
+                        if prev_sales > 0 and recent_sales < prev_sales * 0.8:
+                            recs.append({
+                                "id": "rec_sales_drop",
+                                "title": "Recent Revenue Decline Detected",
+                                "insight": f"Sales dropped by {((prev_sales - recent_sales)/prev_sales)*100:.1f}% in the most recent period ({trend.index[-1]}) compared to the previous period.",
+                                "affected_entity": str(trend.index[-1]),
+                                "metric_values": {"current_period": recent_sales, "previous_period": prev_sales},
+                                "suggested_action": "Investigate recent market conditions or run promotional campaigns to recover volume.",
+                                "priority": "High",
+                                "source": "rule_engine",
+                                "limitations": "Based on a direct period-over-period comparison."
+                            })
+                        elif prev_sales > 0 and recent_sales > prev_sales * 1.2:
+                            recs.append({
+                                "id": "rec_sales_spike",
+                                "title": "Recent Revenue Spike Detected",
+                                "insight": f"Sales increased by {((recent_sales - prev_sales)/prev_sales)*100:.1f}% in the most recent period ({trend.index[-1]}).",
+                                "affected_entity": str(trend.index[-1]),
+                                "metric_values": {"current_period": recent_sales, "previous_period": prev_sales},
+                                "suggested_action": "Analyze what drove this growth and consider doubling down on successful strategies.",
+                                "priority": "Low",
+                                "source": "rule_engine",
+                                "limitations": "Based on a direct period-over-period comparison."
+                            })
+            except Exception:
+                pass
+
         if 'product_id' in df.columns and 'sales' in df.columns and 'profit' in df.columns:
             prod_df = df.groupby('product_id').agg({'sales': 'sum', 'profit': 'sum'}).reset_index()
             prod_df['margin'] = np.where(prod_df['sales'] > 0, prod_df['profit'] / prod_df['sales'], 0)
@@ -101,6 +139,19 @@ class RecommendationService:
                     "limitations": "Check if high shipping costs are standard for this category."
                 })
                 
+        if not recs and 'sales' in df.columns:
+            recs.append({
+                "id": "rec_baseline",
+                "title": "Enrich Your Data Mapping",
+                "insight": "Current mappings are limited to baseline metrics. The recommendation engine performs best with Category, Product, Profit, and Region data.",
+                "affected_entity": "System Configuration",
+                "metric_values": {},
+                "suggested_action": "Map more columns in the My Data wizard to generate advanced business recommendations.",
+                "priority": "Low",
+                "source": "system",
+                "limitations": "Data structure constraints."
+            })
+
         return recs
 
 recommendation_service = RecommendationService()

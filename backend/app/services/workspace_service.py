@@ -413,6 +413,31 @@ def compute_insights(df: pd.DataFrame, mapping: Dict[str, str], dataset_id: str)
 
     def col(c): return m.get(c) if m.get(c) and m.get(c) in df.columns else None
 
+    # ── Time Series Insights ──
+    if col("sales") and col("order_date"):
+        try:
+            dft = df[[col("sales"), col("order_date")]].copy()
+            dft[col("order_date")] = pd.to_datetime(dft[col("order_date")], errors="coerce")
+            dft = dft.dropna(subset=[col("order_date")])
+            if not dft.empty:
+                dft["_period"] = dft[col("order_date")].dt.to_period("M")
+                trend = dft.groupby("_period")[col("sales")].sum()
+                if len(trend) >= 2:
+                    best_month = trend.idxmax()
+                    best_sales = float(trend.max())
+                    insights.append({
+                        "id": f"{dataset_id}_best_month",
+                        "type": "Analytical Insight",
+                        "title": f"Peak Revenue: {best_month}",
+                        "description": f"The highest sales period was {best_month}, generating ${best_sales:,.0f} in revenue.",
+                        "affected_entity": str(best_month),
+                        "evidence": {"best_month": str(best_month), "sales_volume": best_sales},
+                        "method": "Monthly aggregation, maximum value",
+                        "generated_at": ts,
+                    })
+        except Exception:
+            pass
+
     # ── Top category by sales ──
     cat_col = col("category") or col("sub_category")
     if col("sales") and cat_col:
@@ -538,6 +563,20 @@ def compute_insights(df: pd.DataFrame, mapping: Dict[str, str], dataset_id: str)
                 "generated_at": ts,
             })
 
+    # ── Fallback ──
+    if not insights and col("sales"):
+        sales_sum = float(df[col("sales")].sum())
+        insights.append({
+            "id": f"{dataset_id}_general_summary",
+            "type": "Analytical Insight",
+            "title": "Baseline Performance Active",
+            "description": f"The dataset has been successfully processed, identifying ${sales_sum:,.0f} in total mapped volume. Map additional columns like Profit, Category, or Region to unlock deeper strategic insights.",
+            "affected_entity": "Entire Dataset",
+            "evidence": {"total_volume": sales_sum},
+            "method": "Baseline Aggregation",
+            "generated_at": ts,
+        })
+        
     return insights
 
 
