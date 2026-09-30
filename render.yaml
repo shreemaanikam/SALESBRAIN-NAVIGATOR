@@ -2,6 +2,7 @@ services:
   - type: web
     name: salesbrain-backend
     env: python
+    plan: free
     buildCommand: |
       pip install -r backend/requirements.txt
       mkdir -p backend/app/data/uploads
@@ -11,22 +12,19 @@ services:
     envVars:
       - key: DATABASE_URL
         value: sqlite:///./backend/app/data/salesbrain.db
-        # To use PostgreSQL in production (Recommended), provision a Render PostgreSQL DB 
-        # and override this environment variable in the Render Dashboard with the internal DB URL.
+      - key: ALLOW_EPHEMERAL_SQLITE
+        value: "true"
       - key: PORT
         value: 8000
       - key: AUTH_MODE
         value: firebase
       # - key: FIREBASE_SERVICE_ACCOUNT
       #   value: "Add your Firebase Admin JSON credential in the Render Dashboard"
-    disk:
-      name: salesbrain-data
-      mountPath: /opt/render/project/src/backend/app/data
-      sizeGB: 1
       
   - type: web
     name: salesbrain-frontend
     env: node
+    plan: free
     buildCommand: |
       cd frontend
       npm install

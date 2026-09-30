@@ -6,9 +6,9 @@ SalesBrain Navigator is a full-stack, AI-driven retail analytics dashboard built
 
 - **Frontend:** Next.js (React 18), Tailwind CSS, Lucide Icons, Recharts, Zustand.
 - **Backend:** FastAPI, Pandas, NumPy, Scikit-learn, Shap, Python 3.11.
-- **Database:** PostgreSQL (Production) / SQLite (Local dev), SQLAlchemy, Alembic.
+- **Database:** SQLite (Local dev & Free Tier Ephemeral) / PostgreSQL (Paid Production), SQLAlchemy, Alembic.
 - **Authentication:** Firebase Client SDK (Frontend) & Firebase Admin SDK (Backend JWT Verification).
-- **Storage:** Local Parquet files (Durable disk in Production).
+- **Storage:** Local Parquet files (Ephemeral on Free Tier).
 
 ---
 
@@ -45,27 +45,25 @@ The default configuration enables a mocked authentication flow and a local SQLit
 
 ---
 
-## Production Deployment (Render + Firebase + PostgreSQL)
+## Production Deployment (Render Free Tier)
 
-To deploy securely to production, follow these steps to configure real services.
+To deploy to Render for free without adding payment methods, this project has been optimized to use Render Free Web Services. 
 
-### 1. Provision a PostgreSQL Database
-The app explicitly blocks SQLite in production (`RENDER=true` or `ENVIRONMENT=production`). 
-- In your Render Dashboard, create a **PostgreSQL** database.
-- Copy the **Internal Database URL**.
+**Important Free Tier Caveat:** Render Free Web Services do not support persistent disks. This means your SQLite database and any uploaded Parquet datasets will be wiped whenever the instance spins down due to inactivity or when a new deployment is triggered.
 
-### 2. Configure Firebase Authentication
+### 1. Configure Firebase Authentication
 - Create a project in the [Firebase Console](https://console.firebase.google.com/).
 - Navigate to **Authentication** > **Sign-in method** and enable **Email/Password**.
 - Navigate to **Project Settings** > **Service Accounts** and click **Generate new private key**. Copy the raw JSON file contents.
 - In **Project Settings** > **General**, register a Web App and copy the `firebaseConfig` object values.
 - Navigate to **Authentication** > **Settings** > **Authorized domains** and ensure your production frontend domain (e.g., `your-app.onrender.com`) is listed.
 
-### 3. Deploy via Render Blueprint
-Connect this repository to Render using the provided `render.yaml` Blueprint.
+### 2. Deploy via Render Blueprint
+Connect this repository to Render using the provided `render.yaml` Blueprint. The Blueprint automatically configures the **Free** instance types.
 
 #### Backend Required Environment Variables (Render Dashboard):
-* `DATABASE_URL`: Your PostgreSQL Internal Database URL (e.g., `postgresql://user:password@host:5432/dbname`)
+* `DATABASE_URL`: `sqlite:///./backend/app/data/salesbrain.db`
+* `ALLOW_EPHEMERAL_SQLITE`: `true`
 * `AUTH_MODE`: `firebase`
 * `FIREBASE_SERVICE_ACCOUNT`: The complete raw JSON string you copied from Firebase Service Accounts.
 
@@ -79,16 +77,22 @@ Connect this repository to Render using the provided `render.yaml` Blueprint.
 * `NEXT_PUBLIC_FIREBASE_APP_ID`: `your-app-id`
 *(Note: `NEXT_PUBLIC_API_BASE_URL` is automatically configured via `RENDER_EXTERNAL_URL` in the Blueprint).*
 
-### 4. Data Persistence & Migrations
-The Render Blueprint automatically mounts a 1GB persistent disk at `/opt/render/project/src/backend/app/data` to retain uploaded Parquet files.
-Alembic schema migrations automatically run during the build step (`alembic upgrade head`) ensuring PostgreSQL is up to date before traffic is routed.
+### 3. Deploying Independently (Without Blueprint)
+If you prefer not to use the Blueprint, you can create two separate "Web Services" via the Render Dashboard:
 
-### 5. Smoke Testing the Live Application
-1. Navigate to your deployed Frontend URL (HTTPS).
-2. Create a test account or sign in with an existing Firebase identity.
-3. Open **My Data** and upload a synthetic CSV file.
-4. Verify the dashboard, insights, and recommendations generate successfully.
-5. Attempt to access the same workspace via another user account or incognito window to verify strict Tenant Isolation.
+**Backend Service:**
+1. Choose **New Web Service** > connect repository.
+2. Select **Free** instance type.
+3. Build Command: `pip install -r backend/requirements.txt && mkdir -p backend/app/data/uploads && alembic upgrade head`
+4. Start Command: `uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`
+5. Add the Backend Environment Variables from Step 2 above.
+
+**Frontend Service:**
+1. Choose **New Web Service** > connect repository.
+2. Select **Free** instance type.
+3. Build Command: `cd frontend && npm install && npm run build`
+4. Start Command: `cd frontend && npm start`
+5. Add the Frontend Environment Variables from Step 2 above. Also add `NEXT_PUBLIC_API_BASE_URL` pointing to the actual deployed backend URL (e.g., `https://your-backend.onrender.com/api/v1`).
 
 ---
 
@@ -110,5 +114,4 @@ npm run build
 ## Security & Known Risks
 - **Tenant Isolation:** Active on all data operations. Endpoints are strictly protected by Firebase JWT validation.
 - **Secret Management:** Production credentials must be exclusively stored in the hosting provider's Secrets Manager, NEVER in `.env` files or Git.
-- **Upload Safety:** Datasets are converted to Parquet natively. Arbitrary filesystem access is blocked; identifiers enforce UUID boundaries.
-- **Database Backup:** Render automatically backs up managed PostgreSQL instances. You must separately backup the `salesbrain-data` disk if Parquet files are critical for long-term storage.
+- **Storage Volatility:** Because this project uses the Render Free Tier without persistent disks or paid databases, user uploads and the SQLite database are ephemeral. They will reset to an empty state periodically.

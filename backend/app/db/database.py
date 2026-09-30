@@ -8,16 +8,23 @@ logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./backend/app/data/salesbrain.db")
 IS_PRODUCTION = os.getenv("RENDER", "false") == "true" or os.getenv("ENVIRONMENT") == "production"
+ALLOW_EPHEMERAL_SQLITE = os.getenv("ALLOW_EPHEMERAL_SQLITE", "false") == "true"
 
 if IS_PRODUCTION and DATABASE_URL.startswith("sqlite"):
-    error_msg = (
-        "CRITICAL STARTUP ERROR: The application is running in a production environment "
-        "but DATABASE_URL is configured to use SQLite. "
-        "SQLite is not supported for production deployments due to concurrency limits on persistent disks. "
-        "Please provision a PostgreSQL database and configure the DATABASE_URL environment variable."
-    )
-    logger.error(error_msg)
-    raise RuntimeError(error_msg)
+    if ALLOW_EPHEMERAL_SQLITE:
+        logger.warning(
+            "WARNING: Running in production with SQLite and Ephemeral Storage. "
+            "Data (including Parquet files) WILL BE LOST when the Render Free instance spins down."
+        )
+    else:
+        error_msg = (
+            "CRITICAL STARTUP ERROR: The application is running in a production environment "
+            "but DATABASE_URL is configured to use SQLite. "
+            "To deploy on Render Free with ephemeral storage, set ALLOW_EPHEMERAL_SQLITE=true. "
+            "Otherwise, provision a PostgreSQL database."
+        )
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
 
 # Setup engine with PostgreSQL optimizations if applicable
 if DATABASE_URL.startswith("sqlite"):
