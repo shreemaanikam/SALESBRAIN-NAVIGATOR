@@ -20,7 +20,7 @@ export default function LoginPage() {
     setError('');
     try {
       await login(email, password);
-    } catch (err: any) {
+    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       console.error('Login failed:', err);
       // Give a clean error message, avoiding leaking internal details
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
