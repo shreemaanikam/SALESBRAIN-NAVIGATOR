@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List, Dict
 
 class PredictionRequest(BaseModel):
@@ -14,12 +14,14 @@ class PredictionRequest(BaseModel):
     shipping_cost: float = Field(ge=0)
 
 class PredictionResponse(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
     predicted_profit: float
     model_name: str
     model_version: str
     caveat: str
 
 class ModelStatus(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
     available: bool
     model_name: Optional[str] = None
     metrics: Optional[Dict] = None

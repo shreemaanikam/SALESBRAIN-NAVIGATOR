@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 
 class ScenarioBaseline(BaseModel):
@@ -24,6 +24,7 @@ class SimulationRequest(BaseModel):
     scenario: ScenarioModifiers
 
 class SimulationResponse(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
     baseline_profit: float
     scenario_profit: float
     absolute_delta: float
