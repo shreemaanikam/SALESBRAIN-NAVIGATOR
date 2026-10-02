@@ -20,7 +20,9 @@ class PredictionService:
     def __init__(self):
         self.model = None
         self.metadata: Dict[str, Any] = {}
-        self.artifacts_dir = os.environ.get("ML_ARTIFACTS_DIR", "backend/app/ml/artifacts")
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        default_artifacts = os.path.join(base_dir, "ml", "artifacts")
+        self.artifacts_dir = os.environ.get("ML_ARTIFACTS_DIR", default_artifacts)
         self._try_load()
 
     def _try_load(self):

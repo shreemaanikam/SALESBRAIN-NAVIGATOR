@@ -174,11 +174,14 @@ class DBWorkspaceRegistry:
                 query = query.filter(Workspace.user_id == user_id)
             ws_model = query.first()
             if ws_model:
+
                 # If df is in kwargs, we need to save it to disk! (because compute_dashboard mutates it)
                 if "df" in kwargs:
                     df = kwargs.pop("df")
-                    df.columns = df.columns.astype(str)
-                    df.to_parquet(ws_model.filepath, index=False)
+                    from backend.app.services.storage_service import storage_service
+                    # We save it using storage_service
+                    ws_model.filepath = storage_service.save_dataframe(df, ws_model.user_id, ws_model.id)
+
                 
                 if "mapping" in kwargs:
                     ws_model.mapping = kwargs.pop("mapping")

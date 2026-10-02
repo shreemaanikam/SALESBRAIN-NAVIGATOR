@@ -3,7 +3,12 @@ import pandas as pd
 from backend.app.services.prediction_service import prediction_service
 
 try:
-    import shap
+
+    try:
+        import shap
+    except ImportError:
+        shap = None
+
     SHAP_AVAILABLE = True
 except ImportError:
     SHAP_AVAILABLE = False
@@ -14,6 +19,7 @@ class ExplanationService:
         self.feature_importance_path = os.path.join(self.artifacts_dir, 'feature_importance.csv')
 
     def global_explanation(self):
+        if not shap: return {"error": "SHAP is not installed."}
         if os.path.exists(self.feature_importance_path):
             df = pd.read_csv(self.feature_importance_path)
             return df.to_dict('records')

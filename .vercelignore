@@ -1,0 +1,10 @@
+# .vercelignore
+.git/
+.venv/
+venv/
+test_env*/
+backend/app/data/uploads/
+backend/tests/
+__pycache__/
+*.pyc
+node_modules/

@@ -85,7 +85,7 @@ export default function UploadWizardPage() {
       setError('Please upload a CSV or XLSX file.');
       return;
     }
-    if (f.size > 50 * 1024 * 1024) {
+    if (f.size > 4.5 * 1024 * 1024) {
       setError('File is larger than 50 MB. Please reduce the file size.');
       return;
     }
@@ -250,7 +250,7 @@ export default function UploadWizardPage() {
           <CardHeader>
             <CardTitle className="dark:text-white">Upload Your Dataset</CardTitle>
             <CardDescription className="dark:text-slate-400">
-              Accepted formats: CSV, XLSX. Maximum file size: 50 MB.
+              Accepted formats: CSV, XLSX. Maximum file size: 4.5 MB.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5 p-6">

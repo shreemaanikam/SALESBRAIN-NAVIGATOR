@@ -15,12 +15,14 @@ security = HTTPBearer(auto_error=False)
 # But if it's production and missing, it should fail
 
 
+
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
     """
     Returns the user_id of the authenticated user.
     """
-    AUTH_MODE = os.getenv("AUTH_MODE", "local")
-    IS_PRODUCTION = os.getenv("RENDER", "false") == "true" or os.getenv("ENVIRONMENT") == "production"
+    IS_PRODUCTION = os.getenv("VERCEL_ENV") == "production" or os.getenv("RENDER", "false") == "true" or os.getenv("ENVIRONMENT") == "production"
+    AUTH_MODE = os.getenv("AUTH_MODE", "firebase" if IS_PRODUCTION else "local")
+
     if AUTH_MODE == "local":
 
             

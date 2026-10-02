@@ -30,7 +30,7 @@ logger = logging.getLogger("SalesBrain")
 router = APIRouter()
 
 # ── Constants ──────────────────────────────────────────────────────────────
-MAX_FILE_SIZE_MB = 50
+MAX_FILE_SIZE_MB = 4.5
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".xls"}
 PREVIEW_ROWS = 50

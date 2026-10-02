@@ -13,7 +13,15 @@ from contextlib import asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up SalesBrain Navigator backend")
     try:
+        from backend.app.db.database import engine, Base
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database schema initialized (create_all applied)")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
+        
+    try:
         data_service.load()
+
     except Exception as e:
         logger.error(f"Failed to load dataset on startup: {e}")
     yield
