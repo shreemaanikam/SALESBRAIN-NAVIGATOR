@@ -41,6 +41,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       setLoading(false);
     } else {
+      if (!auth) {
+        console.error("Firebase Auth is not initialized. Check your environment variables.");
+        setLoading(false);
+        return;
+      }
       const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
         if (firebaseUser) {
           setUser({ uid: firebaseUser.uid, email: firebaseUser.email || '' });
@@ -66,6 +71,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser({ uid: dummyToken, email });
       router.push('/dashboard');
     } else {
+      if (!auth) throw new Error('Firebase Auth is not initialized. Please check your configuration.');
       if (!password) throw new Error('Password is required in Firebase mode');
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/dashboard');
@@ -78,6 +84,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(null);
       router.push('/login');
     } else {
+      if (!auth) return;
       await signOut(auth);
       router.push('/login');
     }

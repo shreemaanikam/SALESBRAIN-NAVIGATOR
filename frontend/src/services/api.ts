@@ -34,7 +34,7 @@ async function getAuthToken(): Promise<string | null> {
     return typeof window !== 'undefined' ? localStorage.getItem('salesbrain_token') : null;
   } else {
     // Firebase mode
-    if (!auth.currentUser) return null;
+    if (!auth || !auth.currentUser) return null;
     try {
       // Force refresh if needed
       return await auth.currentUser.getIdToken(false);

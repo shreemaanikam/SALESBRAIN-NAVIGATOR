@@ -1,5 +1,5 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { getAuth, Auth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -10,7 +10,22 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
+let app: FirebaseApp | undefined;
+let auth: Auth | undefined;
+
+const isBrowser = typeof window !== "undefined";
+
+if (isBrowser) {
+  if (!firebaseConfig.apiKey) {
+    console.error("Firebase configuration is missing or invalid. Authentication will fail.");
+  } else {
+    try {
+      app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+      auth = getAuth(app);
+    } catch (error) {
+      console.error("Failed to initialize Firebase:", error);
+    }
+  }
+}
 
 export { app, auth };
