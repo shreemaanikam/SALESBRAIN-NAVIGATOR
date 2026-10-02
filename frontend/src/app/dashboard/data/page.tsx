@@ -59,7 +59,7 @@ export default function DataExplorerPage() {
         <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardContent className="p-6">
             <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Columns</div>
-            <div className="text-3xl font-bold text-slate-900 dark:text-white">{qualityData?.columns ?? 28}</div>
+            <div className="text-3xl font-bold text-slate-900 dark:text-white">{qualityData?.column_count ?? 28}</div>
           </CardContent>
         </Card>
         <Card className="dark:bg-slate-900 dark:border-slate-800">
