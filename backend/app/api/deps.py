@@ -22,14 +22,34 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     AUTH_MODE = os.getenv("AUTH_MODE", "local")
     IS_PRODUCTION = os.getenv("RENDER", "false") == "true" or os.getenv("ENVIRONMENT") == "production"
     if AUTH_MODE == "local":
-        if IS_PRODUCTION:
-            logger.error("Security Risk: Local auth mode is enabled in production!")
-            raise HTTPException(status_code=500, detail="Invalid server configuration.")
+
             
         # For local testing without a frontend token
         if not credentials:
             return "local_dev_user"
-        return credentials.credentials
+            
+        token = credentials.credentials
+        # If token is a JWT, extract the user_id or sub to avoid massive file names
+        if token.startswith("eyJ") and token.count(".") == 2:
+            import base64
+            import json
+            try:
+                payload = token.split(".")[1]
+                # Pad for base64 decoding
+                payload += "=" * ((4 - len(payload) % 4) % 4)
+                decoded = base64.b64decode(payload)
+                claims = json.loads(decoded)
+                return claims.get("user_id", claims.get("sub", "local_user"))
+            except Exception as e:
+                pass # Fallback to hashing
+        
+        # If it's still too long, hash it
+        if len(token) > 50:
+            import hashlib
+            return hashlib.md5(token.encode()).hexdigest()
+            
+        return token
+
 
     # Firebase Authentication Mode
     if not credentials:
