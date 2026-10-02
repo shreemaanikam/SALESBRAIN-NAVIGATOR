@@ -46,6 +46,51 @@ class PredictionService:
 
     def is_ready(self) -> bool:
         return self.model is not None
+    def check_compatibility(self, mapping: Dict[str, str]) -> Dict[str, Any]:
+        """Check if the uploaded dataset mapping has all required features for this model."""
+        if not self.is_ready():
+            return {"compatible": False, "reason": "Model not loaded"}
+        
+        required_features = self.metadata.get("features", ALL_FEATURES)
+        missing_features = []
+        
+        for feat in required_features:
+            if feat not in mapping or not mapping[feat]:
+                missing_features.append(feat)
+                
+        if missing_features:
+            return {
+                "compatible": False,
+                "reason": f"Missing required mapped features: {', '.join(missing_features)}",
+                "missing_features": missing_features
+            }
+            
+        return {"compatible": True, "reason": "All required features mapped"}
+
+    def predict_batch(self, df: pd.DataFrame, mapping: Dict[str, str]) -> pd.Series:
+        """Predict profit for a batch of rows in a DataFrame using the mapping."""
+        if not self.is_ready():
+            raise RuntimeError("Model not loaded")
+            
+        compatibility = self.check_compatibility(mapping)
+        if not compatibility["compatible"]:
+            raise ValueError(f"Dataset incompatible: {compatibility['reason']}")
+            
+        # Extract features using mapping
+        feature_df = pd.DataFrame()
+        for feat in ALL_FEATURES:
+            col_name = mapping[feat]
+            feature_df[feat] = df[col_name]
+            
+            # Basic validation
+            if feat in NUMERIC_FEATURES:
+                feature_df[feat] = pd.to_numeric(feature_df[feat], errors='coerce').fillna(0.0)
+            else:
+                feature_df[feat] = feature_df[feat].fillna("unknown").astype(str)
+                
+        return pd.Series(self.model.predict(feature_df[ALL_FEATURES]), index=df.index)
+
+
 
     def predict(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Make a profit prediction from validated input data."""
@@ -56,12 +101,15 @@ class PredictionService:
         df = pd.DataFrame([input_data])
 
         # Ensure all required features exist
+        missing = [f for f in ALL_FEATURES if f not in df.columns]
+        if missing:
+            raise ValueError(f"Missing required features: {', '.join(missing)}")
+            
         for feat in ALL_FEATURES:
-            if feat not in df.columns:
-                if feat in NUMERIC_FEATURES:
-                    df[feat] = 0.0
-                else:
-                    df[feat] = "unknown"
+            if feat in NUMERIC_FEATURES:
+                df[feat] = pd.to_numeric(df[feat], errors='coerce').fillna(0.0)
+            else:
+                df[feat] = df[feat].fillna("unknown").astype(str)
 
         # Reorder columns to match training
         df = df[ALL_FEATURES]

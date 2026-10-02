@@ -20,5 +20,5 @@ Thumbs.db
 
 # Project-specific
 frontend/.env.local
-backend/app/ml/artifacts/
+
 *.log

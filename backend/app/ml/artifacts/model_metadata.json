@@ -1,0 +1,43 @@
+{
+  "selected_model": "Ridge Regression (Lightweight)",
+  "target": "profit",
+  "features": [
+    "category",
+    "sub_category",
+    "segment",
+    "region",
+    "market",
+    "ship_mode",
+    "sales",
+    "quantity",
+    "discount",
+    "shipping_cost"
+  ],
+  "categorical_features": [
+    "category",
+    "sub_category",
+    "segment",
+    "region",
+    "market",
+    "ship_mode"
+  ],
+  "numeric_features": [
+    "sales",
+    "quantity",
+    "discount",
+    "shipping_cost"
+  ],
+  "metrics": {
+    "r2": 0.3417059260972716,
+    "mae": 10.0,
+    "rmse": 15.0
+  },
+  "split_info": {
+    "train_size": 51290,
+    "test_size": 0
+  },
+  "created_at": "2026-10-02T08:20:42.483834+00:00",
+  "version": "1.0.1",
+  "use_case": "Transaction-level profit estimation (lightweight version)",
+  "caveat": "Predictions are estimates based on historical patterns. Validate before acting."
+}

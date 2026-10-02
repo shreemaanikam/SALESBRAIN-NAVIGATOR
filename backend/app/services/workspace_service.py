@@ -8,8 +8,10 @@ import io
 import uuid
 import logging
 import pandas as pd
+from backend.app.services.storage_service import storage_service
 import numpy as np
 from typing import Dict, Any, List, Optional
+from backend.app.services.prediction_service import prediction_service
 from datetime import datetime
 
 logger = logging.getLogger("SalesBrain")
@@ -67,10 +69,7 @@ class DBWorkspaceRegistry:
         os.makedirs(self.upload_dir, exist_ok=True)
 
     def create(self, dataset_id: str, filename: str, df: pd.DataFrame, user_id: str = "legacy_user") -> Dict:
-        filepath = os.path.join(self.upload_dir, f"{dataset_id}.parquet")
-        # Ensure column names are strings before saving to parquet
-        df.columns = df.columns.astype(str)
-        df.to_parquet(filepath, index=False)
+        object_key = storage_service.save_dataframe(df, user_id, dataset_id)
         
         profile_data = {
             "row_count": len(df),
@@ -83,7 +82,7 @@ class DBWorkspaceRegistry:
                 id=dataset_id,
                 user_id=user_id,
                 filename=filename,
-                filepath=filepath,
+                filepath=object_key,
                 status="uploaded",
                 mapping={},
                 profile=profile_data,
@@ -133,7 +132,7 @@ class DBWorkspaceRegistry:
             # Load DataFrame lazily when requested?
             # Existing code expects `ws["df"]` to be available. We'll load it here.
             try:
-                ws["df"] = pd.read_parquet(ws_model.filepath)
+                ws["df"] = storage_service.load_dataframe(ws_model.filepath)
             except Exception as e:
                 logger.error(f"Failed to load dataset file for {dataset_id}: {e}")
                 ws["df"] = pd.DataFrame()
@@ -209,8 +208,7 @@ class DBWorkspaceRegistry:
                 query = query.filter(Workspace.user_id == user_id)
             ws_model = query.first()
             if ws_model:
-                if os.path.exists(ws_model.filepath):
-                    os.remove(ws_model.filepath)
+                storage_service.delete_object(ws_model.filepath)
                 db.delete(ws_model)
                 db.commit()
         finally:
@@ -406,6 +404,31 @@ def compute_dashboard(df: pd.DataFrame, mapping: Dict[str, str]) -> Dict:
         avg_disc = float(df[col("discount")].mean()) * 100
         kpis.append({"label": "Avg Discount", "value": f"{avg_disc:.2f}%", "raw": avg_disc})
     result["kpis"] = kpis
+    
+    # ── ML Predictions ──
+    ml_status = prediction_service.check_compatibility(mapping)
+    result["ml_compatibility"] = ml_status
+    if ml_status.get("compatible"):
+        try:
+            preds = prediction_service.predict_batch(df, mapping)
+            total_pred_profit = float(preds.sum())
+            kpis.append({"label": "Predicted Profit (ML)", "value": f"${total_pred_profit:,.2f}", "raw": total_pred_profit, "is_ml": True})
+            
+            # Aggregate predictions by Category if available
+            if col("category"):
+                df_temp = df.copy()
+                df_temp["_pred_profit"] = preds
+                cat_preds = df_temp.groupby(col("category"))["_pred_profit"].sum().reset_index()
+                cat_preds = cat_preds.sort_values("_pred_profit", ascending=False).to_dict("records")
+                result["ml_predictions_by_category"] = [
+                    {"category": row[col("category")], "predicted_profit": row["_pred_profit"]} 
+                    for row in cat_preds
+                ]
+            result["ml_predictions"] = {"total_predicted_profit": total_pred_profit, "model_info": prediction_service.get_model_info()}
+        except Exception as e:
+            logger.error(f"Failed to generate ML predictions for dashboard: {e}")
+            result["ml_compatibility"]["error"] = str(e)
+            result["ml_compatibility"]["compatible"] = False
 
     # ── Sales Trend ──
     if col("sales") and col("order_date"):
@@ -741,6 +764,7 @@ def validate_mapping(df: pd.DataFrame, mapping: Dict[str, str]) -> Dict:
 
     # Check for missing columns, duplicates, and type compatibility
     import pandas as pd
+from backend.app.services.storage_service import storage_service
     seen_cols = {}
     
     # Define expected numeric concepts
