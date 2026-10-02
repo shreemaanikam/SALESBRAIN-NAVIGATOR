@@ -34,7 +34,9 @@ async function getAuthToken(): Promise<string | null> {
     return typeof window !== 'undefined' ? localStorage.getItem('salesbrain_token') : null;
   } else {
     // Firebase mode
-    if (!auth || !auth.currentUser) return null;
+    if (!auth) return null;
+    await auth.authStateReady();
+    if (!auth.currentUser) return null;
     try {
       // Force refresh if needed
       return await auth.currentUser.getIdToken(false);
@@ -49,19 +51,15 @@ async function request<T>(path: string, options?: FetchOptions & RequestInit): P
   const controller = new AbortController();
   const token = await getAuthToken();
   const headers = new Headers(options?.headers);
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
+  if (token) { headers.set('Authorization', `Bearer ${token}`); }
+  if (!headers.has('Content-Type')) { headers.set('Content-Type', 'application/json'); }
   const timeoutId = setTimeout(() => controller.abort(), options?.timeout || 10000);
 
   try {
     const res = await fetch(`${API_BASE}${path}`, {
       ...options,
       signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
+      headers,
     });
 
     clearTimeout(timeoutId);
@@ -78,7 +76,12 @@ async function request<T>(path: string, options?: FetchOptions & RequestInit): P
     if (err instanceof DOMException && err.name === 'AbortError') {
       throw new APIError('Request timed out', 408);
     }
-    throw new APIError('Backend unavailable', 0);
+    
+    if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+      throw new APIError('Network error or CORS policy blocked the request. Please check if the backend is running and reachable.', 0);
+    }
+    throw new APIError(err instanceof Error ? err.message : 'Backend unavailable', 0);
+
   }
 }
 
@@ -349,9 +352,18 @@ export async function getReportTypes() {
 }
 
 export async function exportReport(reportType: string, format: string = 'csv', filters?: Record<string, string>) {
+  const token = await getAuthToken();
+  if (!token && (process.env.NEXT_PUBLIC_AUTH_MODE || 'local') !== 'local') {
+    throw new Error('Authentication required');
+  }
+
+  const headers = new Headers({ 'Content-Type': 'application/json' });
+  if (token) { headers.set('Authorization', `Bearer ${token}`); }
+  if (!headers.has('Content-Type')) { headers.set('Content-Type', 'application/json'); }
+
   const res = await fetch(`${API_BASE}/reports/export`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({
       report_type: reportType,
       format,
@@ -385,6 +397,16 @@ export async function uploadDataset(file: File): Promise<any> {
   const formData = new FormData();
   formData.append('file', file);
 
+  const token = await getAuthToken();
+  if (!token && (process.env.NEXT_PUBLIC_AUTH_MODE || 'local') !== 'local') {
+    throw new Error('Authentication required');
+  }
+
+  const headers = new Headers();
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 120000); // 2-min timeout for large files
 
@@ -393,17 +415,25 @@ export async function uploadDataset(file: File): Promise<any> {
       method: 'POST',
       body: formData,
       signal: controller.signal,
+      headers,
       // Do NOT set Content-Type — browser sets multipart boundary automatically
     });
     clearTimeout(timeoutId);
     if (!res.ok) {
+      if (res.status === 401 || res.status === 403) throw new Error("Authentication required or expired. Please sign in again.");
+      if (res.status === 413) throw new Error("File is too large. Please upload a smaller dataset.");
+      if (res.status >= 500) throw new Error("Server processing failed. The file may be corrupt, unsupported, or the server encountered an error.");
       const body = await res.json().catch(() => ({}));
       throw new Error(body.detail || `Upload failed (HTTP ${res.status})`);
     }
     return res.json();
-  } catch (err) {
+  } catch (err: any) {
     clearTimeout(timeoutId);
-    throw err;
+    if (err.message === 'Authentication required') throw err;
+    if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+      throw new Error("Network error or CORS policy blocked the upload. The backend may be asleep or unreachable.");
+    }
+    throw new Error(err.message || 'An unexpected error occurred during upload.');
   }
 }
 
@@ -471,11 +501,28 @@ export async function getWorkspaceRecommendations(datasetId: string): Promise<an
 }
 
 export async function exportWorkspaceReport(datasetId: string, reportType: 'kpis' | 'insights' | 'recommendations' = 'kpis') {
-  const url = `${API_BASE}/datasets/${datasetId}/export?report_type=${reportType}`;
+  const token = await getAuthToken();
+  if (!token && (process.env.NEXT_PUBLIC_AUTH_MODE || 'local') !== 'local') {
+    throw new Error('Authentication required');
+  }
+
+  const headers = new Headers();
+  if (token) { headers.set('Authorization', `Bearer ${token}`); }
+  if (!headers.has('Content-Type')) { headers.set('Content-Type', 'application/json'); }
+
+  const res = await fetch(`${API_BASE}/datasets/${datasetId}/export?report_type=${reportType}`, {
+    headers
+  });
+
+  if (!res.ok) throw new APIError('Export failed', res.status);
+
+  const blob = await res.blob();
+  const downloadUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
+  a.href = downloadUrl;
   a.download = `workspace_${reportType}.csv`;
   a.click();
+  URL.revokeObjectURL(downloadUrl);
 }
 
 export async function deleteDataset(datasetId: string): Promise<any> {

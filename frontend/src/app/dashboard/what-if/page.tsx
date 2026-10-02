@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { getModelStatus } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { SlidersHorizontal, Calculator, Activity, ArrowRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -13,6 +14,18 @@ export default function WhatIfSimulatorPage() {
   const [shippingIncrease, setShippingIncrease] = useState(0);
   const [loading, setLoading] = useState(false);
   const [apiResult, setApiResult] = useState<any>(null);
+  const [modelAvailable, setModelAvailable] = useState<boolean>(true);
+  const [modelChecking, setModelChecking] = useState<boolean>(true);
+
+  useEffect(() => {
+    getModelStatus().then(res => {
+      setModelAvailable(res?.available === true);
+      setModelChecking(false);
+    }).catch(() => {
+      setModelAvailable(false);
+      setModelChecking(false);
+    });
+  }, []);
 
   // Baseline real dataset metrics
   const baselineSales = 12642905;
@@ -56,12 +69,18 @@ export default function WhatIfSimulatorPage() {
         </div>
       </div>
 
-      <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 p-4 rounded-lg flex items-start gap-4">
+            <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 p-4 rounded-lg flex items-start gap-4">
         <Activity className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
         <div>
-          <h4 className="text-sm font-bold text-indigo-900 dark:text-indigo-300">Demo Simulation Mode Active</h4>
+          <h4 className="text-sm font-bold text-indigo-900 dark:text-indigo-300">
+            {modelChecking ? "Checking Model Status..." : modelAvailable ? "ML Prediction Pipeline Active" : "Model Unavailable"}
+          </h4>
           <p className="text-sm text-indigo-700 dark:text-indigo-400">
-            Currently using a rule-based simulation algorithm. This will be replaced by the ML Prediction Pipeline once the backend is integrated.
+            {modelChecking 
+              ? "Verifying backend model artifacts..." 
+              : modelAvailable 
+                ? "Simulations are powered by the trained ML model."
+                : "The ML model artifacts are missing on the backend. Showing rule-based fallback analytics."}
           </p>
         </div>
       </div>

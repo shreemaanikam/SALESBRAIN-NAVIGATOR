@@ -157,11 +157,27 @@ export default function UploadWizardPage() {
       setCreateProgress('Computing analytics from your data…');
       await createWorkspaceDashboard(id, mapping);
 
+      let warning = '';
       setCreateProgress('Generating insights…');
-      try { await generateWorkspaceInsights(id); } catch { /* non-fatal */ }
+      try { 
+        await generateWorkspaceInsights(id); 
+      } catch (err: any) { 
+        console.warn('Insights failed:', err.message);
+        warning += 'Insights generation failed. ';
+      }
 
       setCreateProgress('Generating recommendations…');
-      try { await generateWorkspaceRecommendations(id); } catch { /* non-fatal */ }
+      try { 
+        await generateWorkspaceRecommendations(id); 
+      } catch (err: any) { 
+        console.warn('Recommendations failed:', err.message);
+        warning += 'Recommendations generation failed. ';
+      }
+      
+      if (warning) {
+         setError(warning);
+         await new Promise(r => setTimeout(r, 4000));
+      }
 
       setCreateProgress('Dashboard ready!');
 
