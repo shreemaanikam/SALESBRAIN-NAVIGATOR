@@ -1,3 +1,4 @@
+from backend.app.services.storage_service import storage_service
 """
 SalesBrain Navigator — Workspace Service
 Handles user-uploaded dataset lifecycle: storage, profiling, analytics, insights, recommendations.
@@ -8,7 +9,7 @@ import io
 import uuid
 import logging
 import pandas as pd
-from backend.app.services.storage_service import storage_service
+    from backend.app.services.storage_service import storage_service
 import numpy as np
 from typing import Dict, Any, List, Optional
 from backend.app.services.prediction_service import prediction_service
@@ -764,7 +765,7 @@ def validate_mapping(df: pd.DataFrame, mapping: Dict[str, str]) -> Dict:
 
     # Check for missing columns, duplicates, and type compatibility
     import pandas as pd
-from backend.app.services.storage_service import storage_service
+    from backend.app.services.storage_service import storage_service
     seen_cols = {}
     
     # Define expected numeric concepts
