@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { auth } from '@/lib/firebase';
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 
 interface User {
   uid: string;
@@ -13,6 +13,8 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password?: string) => Promise<void>;
+  signup: (email: string, password?: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   authMode: 'local' | 'firebase';
 }
@@ -21,6 +23,8 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   login: async () => {},
+  signup: async () => {},
+  loginWithGoogle: async () => {},
   logout: async () => {},
   authMode: 'local',
 });
@@ -78,6 +82,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const signup = async (email: string, password?: string) => {
+    if (authMode === 'local') {
+      const dummyToken = email.split('@')[0] + "_local_id";
+      localStorage.setItem('salesbrain_token', dummyToken);
+      setUser({ uid: dummyToken, email });
+      router.push('/dashboard');
+    } else {
+      if (!auth) throw new Error('Firebase Auth is not initialized. Please check your configuration.');
+      if (!password) throw new Error('Password is required in Firebase mode');
+      await createUserWithEmailAndPassword(auth, email, password);
+      router.push('/dashboard');
+    }
+  };
+
+  const loginWithGoogle = async () => {
+    if (authMode === 'local') {
+      const dummyToken = "google_user_local_id";
+      localStorage.setItem('salesbrain_token', dummyToken);
+      setUser({ uid: dummyToken, email: 'google@salesbrain.ai' });
+      router.push('/dashboard');
+    } else {
+      if (!auth) throw new Error('Firebase Auth is not initialized.');
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      router.push('/dashboard');
+    }
+  };
+
   const logout = async () => {
     if (authMode === 'local') {
       localStorage.removeItem('salesbrain_token');
@@ -91,7 +123,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, authMode }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, loginWithGoogle, logout, authMode }}>
       {children}
     </AuthContext.Provider>
   );
