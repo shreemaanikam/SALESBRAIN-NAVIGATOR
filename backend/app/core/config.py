@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings(BaseModel):
-    _DATASET_PATH_RAW: str = os.getenv('DATASET_PATH', 'dataset/Cleaned_SuperStore.csv')
+    _DATASET_PATH_RAW: str = os.getenv('DATASET_PATH', 'backend/dataset/Cleaned_SuperStore.csv')
 
     @property
     def DATASET_PATH(self) -> str:
