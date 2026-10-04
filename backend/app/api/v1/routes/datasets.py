@@ -279,7 +279,7 @@ def generate_insights(dataset_id: str, user_id: str = Depends(get_current_user))
     try:
         insights = compute_insights(df, mapping, dataset_id)
     except Exception as e:
-        logger.error(f"Insight generation error for {dataset_id}: {e}")
+        logger.exception(f"Insight generation error for {dataset_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Insight generation failed: {e}")
 
     workspace_registry.update(dataset_id, user_id=user_id, insights=insights)

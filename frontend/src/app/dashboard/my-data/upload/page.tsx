@@ -86,7 +86,7 @@ export default function UploadWizardPage() {
       return;
     }
     if (f.size > 4.5 * 1024 * 1024) {
-      setError('File is larger than 50 MB. Please reduce the file size.');
+      setError('File is larger than 4.5 MB. Please reduce the file size.');
       return;
     }
     setError('');

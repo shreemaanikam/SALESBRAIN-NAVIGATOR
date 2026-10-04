@@ -22,3 +22,12 @@ Thumbs.db
 frontend/.env.local
 
 *.log
+.vercel
+.env*
+test_env_final/
+venv/
+test_env_final/
+test_env_light/
+venv/
+node_modules/
+.next/

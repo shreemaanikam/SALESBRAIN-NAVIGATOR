@@ -1,0 +1,2 @@
+model,mae,mse,rmse,r2
+Ridge Regression (Lightweight),58.5394,17621.8612,132.7474,0.3888

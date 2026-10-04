@@ -7,37 +7,47 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Determine if we should use S3 or Local storage
-STORAGE_BACKEND = os.getenv("WORKSPACE_STORAGE_BACKEND", "local").lower()
-
 class StorageService:
     def __init__(self):
-        self.backend = STORAGE_BACKEND
-        if self.backend == "s3":
-            import boto3
-            from botocore.config import Config
-            self.endpoint = os.getenv("OBJECT_STORAGE_ENDPOINT")
-            self.bucket = os.getenv("OBJECT_STORAGE_BUCKET")
-            self.region = os.getenv("OBJECT_STORAGE_REGION", "us-east-1")
-            self.access_key = os.getenv("OBJECT_STORAGE_ACCESS_KEY")
-            self.secret_key = os.getenv("OBJECT_STORAGE_SECRET_KEY")
+        # We don't initialize clients here to avoid locking in environment state
+        # at module import time, but we can cache the s3 client if needed.
+        self._s3_client = None
+
+    @property
+    def backend(self) -> str:
+        is_production = os.getenv("ENVIRONMENT") == "production" or os.getenv("VERCEL_ENV") == "production"
+        backend = os.getenv("WORKSPACE_STORAGE_BACKEND", "local").lower()
+        if is_production and backend == "local":
+            raise RuntimeError("Local storage must NEVER be used as the persistence mechanism in production.")
+        return backend
+
+    def _get_s3_client(self):
+        # For testing purposes, we can re-evaluate environment variables here
+        import boto3
+        from botocore.config import Config
+        endpoint = os.getenv("OBJECT_STORAGE_ENDPOINT")
+        bucket = os.getenv("OBJECT_STORAGE_BUCKET")
+        region = os.getenv("OBJECT_STORAGE_REGION", "us-east-1")
+        access_key = os.getenv("OBJECT_STORAGE_ACCESS_KEY")
+        secret_key = os.getenv("OBJECT_STORAGE_SECRET_KEY")
+        
+        if not bucket or not access_key or not secret_key:
+            raise RuntimeError("S3 storage requested but missing credentials/bucket configuration.")
             
-            if not self.bucket or not self.access_key or not self.secret_key:
-                raise RuntimeError("S3 storage requested but missing credentials/bucket configuration.")
-                
-            self.s3 = boto3.client(
-                's3',
-                endpoint_url=self.endpoint,
-                aws_access_key_id=self.access_key,
-                aws_secret_access_key=self.secret_key,
-                region_name=self.region,
-                config=Config(signature_version='s3v4')
-            )
-            logger.info(f"Initialized S3 storage using bucket: {self.bucket}")
-        else:
-            self.local_dir = "backend/app/data/uploads"
-            os.makedirs(self.local_dir, exist_ok=True)
-            logger.info(f"Initialized Local storage at {self.local_dir}")
+        client = boto3.client(
+            's3',
+            endpoint_url=endpoint,
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            region_name=region,
+            config=Config(signature_version='s3v4')
+        )
+        return client, bucket
+
+    def _get_local_dir(self):
+        local_dir = "/tmp/uploads"
+        os.makedirs(local_dir, exist_ok=True)
+        return local_dir
 
     def save_dataframe(self, df: pd.DataFrame, user_id: str, workspace_id: str) -> str:
         """Saves a dataframe to parquet. Returns the storage key."""
@@ -51,11 +61,12 @@ class StorageService:
         buffer.seek(0)
         
         if self.backend == "s3":
-            self.s3.upload_fileobj(buffer, self.bucket, object_key)
-            logger.info(f"Uploaded {object_key} to S3 bucket {self.bucket}")
+            client, bucket = self._get_s3_client()
+            client.upload_fileobj(buffer, bucket, object_key)
+            logger.info(f"Uploaded {object_key} to S3 bucket {bucket}")
         else:
-            # We replace slashes with underscores for local storage to keep it flat or recreate dirs
-            local_path = os.path.join(self.local_dir, object_key.replace("/", "_"))
+            local_dir = self._get_local_dir()
+            local_path = os.path.join(local_dir, object_key.replace("/", "_"))
             with open(local_path, "wb") as f:
                 f.write(buffer.read())
             logger.info(f"Saved {object_key} to local path {local_path}")
@@ -66,12 +77,12 @@ class StorageService:
     def load_dataframe(self, object_key: str) -> pd.DataFrame:
         """Loads a dataframe from the given object key."""
         if self.backend == "s3":
+            client, bucket = self._get_s3_client()
             buffer = io.BytesIO()
-            self.s3.download_fileobj(self.bucket, object_key, buffer)
+            client.download_fileobj(bucket, object_key, buffer)
             buffer.seek(0)
             return pd.read_parquet(buffer)
         else:
-            # Local fallback uses the path directly
             if not os.path.exists(object_key):
                 raise FileNotFoundError(f"Local file missing: {object_key}")
             return pd.read_parquet(object_key)
@@ -82,8 +93,9 @@ class StorageService:
             return
             
         if self.backend == "s3":
+            client, bucket = self._get_s3_client()
             try:
-                self.s3.delete_object(Bucket=self.bucket, Key=object_key)
+                client.delete_object(Bucket=bucket, Key=object_key)
                 logger.info(f"Deleted {object_key} from S3")
             except Exception as e:
                 logger.error(f"Failed to delete {object_key} from S3: {e}")

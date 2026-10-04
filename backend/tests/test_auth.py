@@ -2,25 +2,37 @@ import pytest
 from fastapi.testclient import TestClient
 from backend.app.main import app
 from backend.app.api.deps import get_current_user
+from unittest.mock import patch
 import os
 
 def test_missing_token_production():
-    # Remove override
     app.dependency_overrides.clear()
     
-    # Mock production environment
-    os.environ["RENDER"] = "true"
+    # Mock production environment where auth defaults to firebase
+    with patch.dict("os.environ", {"ENVIRONMENT": "production"}):
+        with TestClient(app) as client:
+            response = client.get("/api/v1/datasets")
+            assert response.status_code == 401
+            assert response.json() == {"detail": "Authentication required."}
+
+def test_invalid_firebase_token():
+    app.dependency_overrides.clear()
     
-    with TestClient(app) as client:
-        response = client.get("/api/v1/datasets")
-        assert response.status_code == 500 # local mode in production fails closed
-        
-    os.environ["RENDER"] = "false"
-    os.environ["AUTH_MODE"] = "firebase"
+    with patch.dict("os.environ", {"ENVIRONMENT": "production"}):
+        with TestClient(app) as client:
+            # Send an invalid token
+            response = client.get("/api/v1/datasets", headers={"Authorization": "Bearer invalid_token"})
+            assert response.status_code == 401
+            assert response.json() == {"detail": "Invalid or expired token."}
+
+def test_local_development_auth():
+    app.dependency_overrides.clear()
     
-    with TestClient(app) as client:
-        response = client.get("/api/v1/datasets")
-        assert response.status_code == 401 # firebase mode fails without token
+    with patch.dict("os.environ", {"ENVIRONMENT": "development", "AUTH_MODE": "local"}):
+        with TestClient(app) as client:
+            # Local mode bypasses auth if AUTH_MODE is local
+            response = client.get("/api/v1/datasets")
+            assert response.status_code == 200
 
 def test_tenant_isolation():
     app.dependency_overrides.clear()
@@ -28,27 +40,31 @@ def test_tenant_isolation():
     # Create user A workspace
     def override_user_a(): return "user_a"
     app.dependency_overrides[get_current_user] = override_user_a
-    with TestClient(app) as client:
-        csv_data = "Date,Sales\n2023-01-01,100"
-        res = client.post("/api/v1/datasets/upload", files={"file": ("test.csv", csv_data, "text/csv")})
-        assert res.status_code == 200
-        dataset_a = res.json()["dataset_id"]
-        
-        # Verify user A sees it
-        res_list = client.get("/api/v1/datasets")
-        assert any(d["dataset_id"] == dataset_a for d in res_list.json()["datasets"])
-        
+    
+    with patch.dict("os.environ", {"WORKSPACE_STORAGE_BACKEND": "local"}):
+        with TestClient(app) as client:
+            csv_data = "Date,Sales\n2023-01-01,100"
+            res = client.post("/api/v1/datasets/upload", files={"file": ("test.csv", csv_data, "text/csv")})
+            assert res.status_code == 200
+            dataset_a = res.json()["dataset_id"]
+            
+            # Verify user A sees it
+            res_list = client.get("/api/v1/datasets")
+            assert any(d["dataset_id"] == dataset_a for d in res_list.json()["datasets"])
+            
     # Create user B workspace
     def override_user_b(): return "user_b"
     app.dependency_overrides[get_current_user] = override_user_b
-    with TestClient(app) as client:
-        # Verify user B does NOT see it
-        res_list = client.get("/api/v1/datasets")
-        assert not any(d["dataset_id"] == dataset_a for d in res_list.json()["datasets"])
-        
-        # Verify user B cannot access user A dataset directly
-        res_get = client.get(f"/api/v1/datasets/{dataset_a}/insights")
-        assert res_get.status_code == 404
+    
+    with patch.dict("os.environ", {"WORKSPACE_STORAGE_BACKEND": "local"}):
+        with TestClient(app) as client:
+            # Verify user B does NOT see it
+            res_list = client.get("/api/v1/datasets")
+            assert not any(d["dataset_id"] == dataset_a for d in res_list.json()["datasets"])
+            
+            # Verify user B cannot access user A dataset directly
+            res_get = client.get(f"/api/v1/datasets/{dataset_a}/insights")
+            assert res_get.status_code == 404
 
 def test_legacy_workspace_isolation():
     app.dependency_overrides.clear()

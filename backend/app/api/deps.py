@@ -34,7 +34,6 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         # If token is a JWT, extract the user_id or sub to avoid massive file names
         if token.startswith("eyJ") and token.count(".") == 2:
             import base64
-            import json
             try:
                 payload = token.split(".")[1]
                 # Pad for base64 decoding

@@ -164,7 +164,7 @@ export default function DashboardOverview() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Lightbulb className="w-5 h-5 text-amber-500" />
-              <CardTitle className="dark:text-white">AI Insights & Recommendations</CardTitle>
+              <CardTitle className="dark:text-white">Data Insights & Recommendations</CardTitle>
             </div>
             <CardDescription className="dark:text-slate-400">
               {insights.isFromApi ? 'Evidence-based findings from the analytics engine.' : 'Automated findings from the decision support system.'}

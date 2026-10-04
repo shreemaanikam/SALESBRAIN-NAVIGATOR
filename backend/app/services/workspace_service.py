@@ -66,7 +66,7 @@ class DBWorkspaceRegistry:
     """Persistent workspace store using SQLAlchemy and local Parquet files."""
     
     def __init__(self):
-        self.upload_dir = os.path.join("backend", "app", "data", "uploads")
+        self.upload_dir = "/tmp/uploads"
         os.makedirs(self.upload_dir, exist_ok=True)
 
     def create(self, dataset_id: str, filename: str, df: pd.DataFrame, user_id: str = "legacy_user") -> Dict:
@@ -133,7 +133,15 @@ class DBWorkspaceRegistry:
             # Load DataFrame lazily when requested?
             # Existing code expects `ws["df"]` to be available. We'll load it here.
             try:
-                ws["df"] = storage_service.load_dataframe(ws_model.filepath)
+                df_loaded = storage_service.load_dataframe(ws_model.filepath)
+                if ws_model.mapping:
+                    numeric_concepts = ["sales", "profit", "discount", "quantity", "shipping_cost"]
+                    m = ws_model.mapping
+                    for concept in numeric_concepts:
+                        c = m.get(concept)
+                        if c and c in df_loaded.columns and not pd.api.types.is_numeric_dtype(df_loaded[c]):
+                            df_loaded[c] = pd.to_numeric(df_loaded[c].astype(str).str.replace(r'[^\d\.\-]', '', regex=True), errors='coerce').fillna(0.0)
+                ws["df"] = df_loaded
             except Exception as e:
                 logger.error(f"Failed to load dataset file for {dataset_id}: {e}")
                 ws["df"] = pd.DataFrame()

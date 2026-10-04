@@ -1,0 +1,52 @@
+feature,importance,source_model
+sales,0.44300339773112596,extra_trees
+discount,0.24745788038857516,extra_trees
+shipping_cost,0.11569363229342844,extra_trees
+quantity,0.018902710831275413,extra_trees
+sub_category_Binders,0.014578486858258305,extra_trees
+sub_category_Copiers,0.01115641742644168,extra_trees
+sub_category_Machines,0.0092063515719995,extra_trees
+sub_category_Tables,0.007621880161637721,extra_trees
+category_Office Supplies,0.007610995173899599,extra_trees
+ship_mode_Same Day,0.007374496748088213,extra_trees
+segment_Home Office,0.007224125021621607,extra_trees
+ship_mode_Standard Class,0.006910839327623348,extra_trees
+region_Central,0.006691883882937272,extra_trees
+region_South,0.006255309691364516,extra_trees
+segment_Consumer,0.005832397550201081,extra_trees
+region_East,0.005466619081647953,extra_trees
+ship_mode_Second Class,0.005200018469307034,extra_trees
+market_US,0.005163190140148111,extra_trees
+segment_Corporate,0.004876032444094367,extra_trees
+ship_mode_First Class,0.004827117483488923,extra_trees
+market_EU,0.004781921597481736,extra_trees
+sub_category_Supplies,0.004564934645517332,extra_trees
+category_Technology,0.00396025452597012,extra_trees
+category_Furniture,0.0035835257194087766,extra_trees
+sub_category_Bookcases,0.003571403287997081,extra_trees
+market_APAC,0.003362394148758621,extra_trees
+region_Central Asia,0.0027135045152656893,extra_trees
+sub_category_Phones,0.002674848975967796,extra_trees
+market_LATAM,0.002599503757603973,extra_trees
+sub_category_Chairs,0.0025467571714069726,extra_trees
+region_West,0.0024903670002260655,extra_trees
+region_North Asia,0.0023682460752532677,extra_trees
+sub_category_Appliances,0.00235910326121068,extra_trees
+region_North,0.0022694930186716563,extra_trees
+region_Southeast Asia,0.002269166745034772,extra_trees
+region_EMEA,0.0020204812632397514,extra_trees
+market_EMEA,0.0018317360361191698,extra_trees
+sub_category_Accessories,0.0017549077766587796,extra_trees
+region_Oceania,0.0017370761244633074,extra_trees
+sub_category_Storage,0.0014299914206197528,extra_trees
+market_Africa,0.0011964311792021427,extra_trees
+region_Africa,0.0010899125254301301,extra_trees
+region_Caribbean,0.000954580341704721,extra_trees
+sub_category_Paper,0.0001874855154316422,extra_trees
+region_Canada,0.00018200472371234183,extra_trees
+sub_category_Furnishings,0.0001624508219585063,extra_trees
+market_Canada,0.00014007643879025724,extra_trees
+sub_category_Art,6.215490221255074e-05,extra_trees
+sub_category_Envelopes,5.61271710440516e-05,extra_trees
+sub_category_Labels,2.3305936493522576e-05,extra_trees
+sub_category_Fasteners,2.071099980634028e-06,extra_trees

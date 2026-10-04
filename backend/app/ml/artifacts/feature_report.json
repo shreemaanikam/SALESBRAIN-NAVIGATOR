@@ -1,0 +1,130 @@
+{
+  "target": "profit",
+  "use_case": "Transaction-level profit estimation (sales known at prediction time)",
+  "total_features": 10,
+  "categorical_features": [
+    "category",
+    "sub_category",
+    "segment",
+    "region",
+    "market",
+    "ship_mode"
+  ],
+  "numeric_features": [
+    "sales",
+    "quantity",
+    "discount",
+    "shipping_cost"
+  ],
+  "excluded_columns": [
+    "profit",
+    "Profit_Margin",
+    "order_id",
+    "product_id",
+    "customer_name",
+    "product_name",
+    "order_date",
+    "ship_date",
+    "year",
+    "Month",
+    "Month_Name",
+    "Quarter",
+    "Day",
+    "Day_Name",
+    "Shipping_Days",
+    "state",
+    "country",
+    "order_priority"
+  ],
+  "feature_stats": {
+    "sales": {
+      "mean": 246.49844024176252,
+      "std": 487.5671746315802,
+      "min": 0.0,
+      "max": 22638.0,
+      "missing": 0
+    },
+    "quantity": {
+      "mean": 3.4765451355039967,
+      "std": 2.2787663138033745,
+      "min": 1.0,
+      "max": 14.0,
+      "missing": 0
+    },
+    "discount": {
+      "mean": 0.14290754533047378,
+      "std": 0.21227993168586598,
+      "min": 0.0,
+      "max": 0.85,
+      "missing": 0
+    },
+    "shipping_cost": {
+      "mean": 26.375915188145832,
+      "std": 57.29680389406972,
+      "min": 0.0,
+      "max": 933.57,
+      "missing": 0
+    },
+    "category": {
+      "unique_values": 3,
+      "top_values": {
+        "Office Supplies": 31273,
+        "Technology": 10141,
+        "Furniture": 9876
+      },
+      "missing": 0
+    },
+    "sub_category": {
+      "unique_values": 17,
+      "top_values": {
+        "Binders": 6152,
+        "Storage": 5059,
+        "Art": 4883,
+        "Paper": 3538,
+        "Chairs": 3434
+      },
+      "missing": 0
+    },
+    "segment": {
+      "unique_values": 3,
+      "top_values": {
+        "Consumer": 26518,
+        "Corporate": 15429,
+        "Home Office": 9343
+      },
+      "missing": 0
+    },
+    "region": {
+      "unique_values": 13,
+      "top_values": {
+        "Central": 11117,
+        "South": 6645,
+        "EMEA": 5029,
+        "North": 4785,
+        "Africa": 4587
+      },
+      "missing": 0
+    },
+    "market": {
+      "unique_values": 7,
+      "top_values": {
+        "APAC": 11002,
+        "LATAM": 10294,
+        "EU": 10000,
+        "US": 9994,
+        "EMEA": 5029
+      },
+      "missing": 0
+    },
+    "ship_mode": {
+      "unique_values": 4,
+      "top_values": {
+        "Standard Class": 30775,
+        "Second Class": 10309,
+        "First Class": 7505,
+        "Same Day": 2701
+      },
+      "missing": 0
+    }
+  }
+}

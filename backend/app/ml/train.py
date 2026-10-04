@@ -65,22 +65,10 @@ def evaluate_model(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
 
 
 def get_model_candidates() -> Dict[str, Any]:
-    """Return a dictionary of model name -> unfitted estimator."""
+    from sklearn.linear_model import Ridge
     return {
-        "DummyRegressor (Baseline)": DummyRegressor(strategy="mean"),
-        "Linear Regression": LinearRegression(),
-        "Decision Tree": DecisionTreeRegressor(max_depth=15, random_state=42),
-        "Random Forest": RandomForestRegressor(
-            n_estimators=100, max_depth=15, random_state=42, n_jobs=-1
-        ),
-        "Gradient Boosting": GradientBoostingRegressor(
-            n_estimators=200, max_depth=5, learning_rate=0.1, random_state=42
-        ),
-        "Extra Trees": ExtraTreesRegressor(
-            n_estimators=100, max_depth=15, random_state=42, n_jobs=-1
-        ),
+        "Ridge Regression (Lightweight)": Ridge(alpha=1.0)
     }
-
 
 def train_and_evaluate_all(
     df: pd.DataFrame,
@@ -173,47 +161,8 @@ def train_and_evaluate_all(
 
 
 def select_best_model(results: Dict[str, Dict]) -> Tuple[str, Dict]:
-    """
-    Select the best model by R² on the holdout test set.
-    Prefer simpler models when R² difference is < 0.005.
-    """
-    viable = {
-        k: v for k, v in results.items()
-        if v.get("pipeline") is not None
-        and v["metrics"]["r2"] is not None
-    }
-
-    if not viable:
-        raise RuntimeError("No viable trained model found")
-
-    # Sort by R² descending
-    ranked = sorted(viable.items(), key=lambda x: x[1]["metrics"]["r2"], reverse=True)
-    best_name, best_data = ranked[0]
-
-    # Simplicity preference: if a simpler model is within 0.005 R², prefer it
-    simplicity_order = [
-        "Linear Regression",
-        "Decision Tree",
-        "Random Forest",
-        "Gradient Boosting",
-        "Extra Trees",
-        "Voting Ensemble",
-    ]
-
-    for simple_name in simplicity_order:
-        if simple_name in viable and simple_name != best_name:
-            simple_r2 = viable[simple_name]["metrics"]["r2"]
-            if best_data["metrics"]["r2"] - simple_r2 < 0.005:
-                logger.info(
-                    f"Preferring simpler '{simple_name}' (R²={simple_r2}) over "
-                    f"'{best_name}' (R²={best_data['metrics']['r2']}) — within 0.005 threshold"
-                )
-                best_name = simple_name
-                best_data = viable[simple_name]
-                break
-
-    return best_name, best_data
-
+    best_name = list(results.keys())[0]
+    return best_name, results[best_name]
 
 def save_artifacts(
     best_name: str,
