@@ -29,7 +29,8 @@ def health_check(db: Session = Depends(get_db)):
     storage_reachable = True
     try:
         if storage_service.backend == "s3":
-            storage_service.s3.head_bucket(Bucket=storage_service.bucket)
+            client, bucket = storage_service._get_s3_client()
+            client.list_objects_v2(Bucket=bucket, MaxKeys=1)
     except Exception:
         storage_reachable = False
 
